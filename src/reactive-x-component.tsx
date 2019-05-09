@@ -116,7 +116,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         const W                         = WrappedComponent as any;
         const isFnCmp                   = isFunctionComponent(WrappedComponent);
 
-        logger.debug('rendering component. is FunctionComponent: ', isFnCmp);
+        logger.debug(`rendering component [${isFnCmp ? 'FunctionComponent' : 'ComponentClass'}]`);
 
         if (isFnCmp) {
           return (
@@ -194,17 +194,24 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
             },
           }));
         }
-        else if (current && current.hasOwnProperty(prop) &&
-          this.isSubscribable(propValue)) {
-          const referenceValue = current[prop];
+        else if (current && current.hasOwnProperty(prop)) {
+          logger.debug('found [' + prop + '] on reference component');
+          if (this.isSubscriberType(propValue)) {
+            const referenceValue = current[prop];
 
-          // noinspection SuspiciousTypeOfGuard - Reason editor validation
-          if (referenceValue instanceof Observable) {
-            logger.info(`sending subscriber for [${ prop }]`);
-            subscription = referenceValue.subscribe(propValue);
+            // noinspection SuspiciousTypeOfGuard - Reason editor validation
+            if (referenceValue instanceof Observable) {
+              logger.info(`sending subscriber for [${ prop }]`);
+              subscription = referenceValue.subscribe(propValue);
+            }
+            else {
+              logger.warning(`Received a subscribable property, but nothing to subscribe to. Prop: [${ prop }]`);
+            }
           }
           else {
-            logger.warning(`Received a subscribable property, but nothing to subscribe to. Prop: [${ prop }]`);
+            logger.warning(`Received prop [${ prop }] which is also on component reference. ` +
+              `However propValue is not of Subscriber type`);
+            logger.debug('propValue: ', propValue);
           }
         }
 
@@ -214,7 +221,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         }
       }
 
-      private isSubscribable (value : any) {
+      private isSubscriberType (value : any) {
         return typeof value === 'function' ||
           (value && (['next', 'complete', 'error']
             .find(key => value.hasOwnProperty(key) && typeof value[key] === 'function')));
@@ -237,7 +244,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       private filterKeys (obj : any, isObservable = true) {
         return (key : string) => {
-          const isRxjsCompat = (obj[key] instanceof Observable || typeof obj[key] === 'function');
+          const isRxjsCompat = (obj[key] instanceof Observable || this.isSubscriberType(obj[key]));
           return isObservable ? isRxjsCompat : !isRxjsCompat;
         };
       }
