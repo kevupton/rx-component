@@ -30,8 +30,17 @@ interface Event {
   value : number;
 }
 
-class Test extends Component {
+class Test extends Component<Props> {
   public readonly events$ = new Subject<number>();
+  
+  render() {
+    const { counter, counter2, message } = this.props;
+    return (<div>
+      <span>{ message }</span>
+      <div>Prop Counter: { counter }</div>
+      <div>Static Counter: { counter2 }</div>
+    </div>);
+  }
 }
 
 const staticProps = {
