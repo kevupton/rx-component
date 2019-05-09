@@ -37,8 +37,8 @@ interface IStaticProps {
 }
 
 interface IState {
-  data : Record<string, any>;
-  props : Record<string, any>;
+  obsValues : Record<string, any>;
+  basicProps : Record<string, any>;
 }
 
 interface IStateWithPrevProps extends IState {
@@ -46,7 +46,7 @@ interface IStateWithPrevProps extends IState {
 }
 
 const DEFAULT_STATE : () => IStateWithPrevProps = () => ({
-  data: {}, props: {}, prevProps: {},
+  obsValues: {}, basicProps: {}, prevProps: {},
 });
 
 // export type EnforceStaticProps<O, T> = InferredProps<O> extends T ? O : never;
@@ -58,7 +58,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
     ComponentType<Separate<CompType, StaticProps> & ClassFns<CompType>> {
 
     return class extends Component<any, IState> {
-      public readonly state              = { props: {}, data: defaultState || {} };
+      public readonly state              = { basicProps: {}, obsValues: defaultState || {} };
       private readonly reference         = createRef<typeof WrappedComponent>();
       private staticSubscriptions        = new Subscription();
       private readonly propSubscriptions = new Map<string, Subscription>();
@@ -85,6 +85,9 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       }
 
       private triggerUpdate (props : any) {
+        logger.debug('triggering update');
+        logger.debug(props);
+
         const { prevProps } = this.stateSubject.value;
         this.update({ prevProps: props });
 
@@ -101,13 +104,13 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
             newProps[key] = props[key],
           );
 
-          this.update({ props: newProps });
+          this.update({ basicProps: newProps });
         }
       }
 
       public render () {
-        const { data, props } = this.state;
-        const values          = { ...props, ...data };
+        const { obsValues, basicProps } = this.state;
+        const values          = { ...basicProps, ...obsValues };
         const W               = WrappedComponent as any;
         if (isFunctionComponent(WrappedComponent)) {
           return (
@@ -178,8 +181,8 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         if (propValue instanceof Observable) {
           logger.info(`subscribing to observable [${ prop }]`);
           subscription = propValue.subscribe(result => this.update({
-            data: {
-              ...this.stateSubject.value.data,
+            obsValues: {
+              ...this.stateSubject.value.obsValues,
               [prop]: result,
             },
           }));
@@ -243,11 +246,11 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         const subscription = this.stateSubject.pipe(
           debounceTime(0),
           distinctUntilChanged((a, b) => {
-            return a.data === b.data && a.props === b.props;
+            return a.basicProps === b.basicProps && a.obsValues === b.obsValues;
           }),
           tap(() => logger.info('updating state')),
-          tap(({ data, props }) => logger.debug({ ...data, ...props })),
-        ).subscribe(({ data, props }) => this.setState({ data, props }));
+          tap(({ obsValues, basicProps }) => logger.debug({ obsValues, basicProps })),
+        ).subscribe(({ obsValues, basicProps }) => this.setState({ obsValues, basicProps }));
 
         this.staticSubscriptions.add(subscription);
       }
@@ -257,8 +260,8 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           .forEach(key => {
             this.staticSubscriptions.add(
               (staticProps as any)[key].subscribe((value : string) => this.update({
-                data: {
-                  ...this.stateSubject.value.data,
+                obsValues: {
+                  ...this.stateSubject.value.obsValues,
                   [key]: value,
                 },
               })),
