@@ -1,7 +1,9 @@
 import * as React from 'react';
 import { Component, ComponentType, createRef } from 'react';
 import { BehaviorSubject, Observable, PartialObserver, Subscription } from 'rxjs';
+import { tap } from 'rxjs/internal/operators/tap';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { logger } from './logger';
 
 type ExceptValues<X, Y> = {
   [Key in keyof X] : Key extends keyof Y ? never : Key
@@ -63,7 +65,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       private readonly stateSubject      = new BehaviorSubject<IStateWithPrevProps>(DEFAULT_STATE());
 
       public componentDidMount () {
-        // console.log('component did mount');
+        logger.info('component did mount');
         this.listenToStateUpdates();
         this.subscribeToStaticProps();
 
@@ -71,14 +73,14 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       }
 
       public componentWillUnmount () {
-        // console.log('component unmounting');
+        logger.info('component unmounting');
         this.triggerUpdate({});
         this.staticSubscriptions.unsubscribe();
         this.staticSubscriptions = new Subscription();
       }
 
       public componentDidUpdate () {
-        // console.log('component did update');
+        logger.debug('component did update');
         this.triggerUpdate(this.props);
       }
 
@@ -127,9 +129,10 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       private subscribeToProps (prevProps : any, props : any) {
         const { added, different, removed, changes } = this.calculateDifferences(prevProps, props);
 
-        // if (changes) {
-        //   console.log(added, different, removed);
-        // }
+        if (changes) {
+          logger.info('Props Updated');
+          logger.debug({ added, different, removed });
+        }
         different.concat(removed).forEach(prop => this.removePropSubscription(prop));
         added.concat(different).forEach(prop => this.addPropSubscription(prop, props));
 
@@ -173,7 +176,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         let subscription : Subscription | null = null;
 
         if (propValue instanceof Observable) {
-          // console.log('subscribing to observable ' + prop);
+          logger.info(`subscribing to observable [${ prop }]`);
           subscription = propValue.subscribe(result => this.update({
             data: {
               ...this.stateSubject.value.data,
@@ -189,14 +192,14 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
             // noinspection SuspiciousTypeOfGuard - Reason editor validation
             if (referenceValue instanceof Observable) {
-              // console.log('subscribing to observable ' + prop);
+              logger.info(`sending subscriber for [${ prop }]`);
               subscription = referenceValue.subscribe(propValue);
             }
           }
         }
 
         if (subscription) {
-          // console.log('setting sub', prop);
+          logger.debug(`setting sub [${ prop }]`);
           this.propSubscriptions.set(prop, subscription);
         }
       }
@@ -214,10 +217,10 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       private removePropSubscription (prop : string) {
         const subscription = this.propSubscriptions.get(prop);
         if (!subscription) {
-          // console.log('no subscription found for ' + prop);
+          logger.warning(`no subscription found for [${ prop }]`);
           return;
         }
-        // console.log('unsubscribing to prop', prop);
+        logger.info(`unsubscribing to prop [${ prop }]`);
         subscription.unsubscribe();
         this.propSubscriptions.delete(prop);
       }
@@ -242,6 +245,8 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           distinctUntilChanged((a, b) => {
             return a.data === b.data && a.props === b.props;
           }),
+          tap(() => logger.info('updating state')),
+          tap(({ data, props }) => logger.debug({ ...data, ...props })),
         ).subscribe(({ data, props }) => this.setState({ data, props }));
 
         this.staticSubscriptions.add(subscription);

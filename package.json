@@ -1,6 +1,6 @@
 {
   "name": "reactive-x-component",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "React Reactive X Component using RxJS as State Management",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
@@ -12,6 +12,7 @@
     "prepublish": "yarn build"
   },
   "dependencies": {
+    "chalk": "^2.4.2",
     "rxjs": "^6.5.1"
   },
   "devDependencies": {
@@ -20,6 +21,7 @@
     "@babel/plugin-syntax-dynamic-import": "7.2.0",
     "@babel/plugin-transform-react-jsx": "7.3.0",
     "@babel/preset-env": "^7.4.4",
+    "@types/chalk": "^2.2.0",
     "@types/react": "^16.8.17",
     "@webpack-cli/init": "^0.1.5",
     "babel-loader": "^8.0.5",
