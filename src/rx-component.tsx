@@ -47,10 +47,10 @@ const DEFAULT_STATE : () => IStateWithPrevProps = () => ({
   data: {}, props: {}, prevProps: {},
 });
 
-export function RxComponent<StaticProps extends IStaticProps = {}, Props extends ObservableValues<StaticProps> = any>
+export function RxComponent<StaticProps extends IStaticProps = {}>
 (staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>) {
 
-  return function <CompType extends ComponentType<Props>> (WrappedComponent : CompType) :
+  return function <CompType extends ComponentType<any>> (WrappedComponent : CompType) :
     ComponentType<Separate<CompType, StaticProps> & ClassFns<CompType>> {
 
     return class extends Component<any, IState> {

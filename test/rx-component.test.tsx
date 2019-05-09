@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Component } from 'react';
-import { interval, Observable } from 'rxjs';
+import { interval } from 'rxjs';
 import { RxComponent } from '../src';
 
 interface TestProps {
@@ -20,9 +20,18 @@ const RxTest = RxComponent()(Test);
 
 export default RxTest;
 export const App = () => (<div>
-  <RxTest counter={ 2 } counter$={ interval(2000) } value$={ { next: v => v.toExponential(2) } }/>
+  <RxTest counter={ 2 } counter$={ interval(2000) } value$={ { next: v => v.toExponential(2) } } />
 </div>);
 
-export const FnTest = RxComponent<{ b : Observable<number> }, { b : number }>({ b: interval(1000) })(({ b }) => (
+export const FnTest = RxComponent({ b: interval(1000) })(({ b }) => (
   <div>{ b }</div>
 ));
+
+
+type TT<T> = T extends string ? T : never;
+
+function B<D>(a : TT<D>) : D {
+  return {} as any;
+}
+
+const b = B(2);
