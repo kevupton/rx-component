@@ -1,6 +1,6 @@
 {
   "name": "reactive-x-component",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "React Reactive X Component using RxJS as State Management",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",

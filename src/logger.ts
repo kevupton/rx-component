@@ -1,5 +1,4 @@
 import chalk from 'chalk';
-import * as console from 'console';
 
 export enum LogLevel {
   None    = 0,
@@ -33,7 +32,7 @@ class Logger {
     this.write('log', item, LogLevel.None);
   }
 
-  private write (method : keyof typeof console, output : any[], level : LogLevel, prefix = '', color : string = '#ffffff') {
+  private write (method : keyof Console, output : any[], level : LogLevel, prefix = '', color : string = '#ffffff') {
     if (this.logLevel < level) {
       return;
     }
