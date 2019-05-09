@@ -3,12 +3,13 @@
   "version": "0.0.3",
   "description": "React Reactive X Component using RxJS as State Management",
   "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "typings": "lib/index.d.ts",
   "repository": "https://github.com/kevupton/rx-component",
   "author": "Kevin Upton <k_upton@live.com>",
   "license": "MIT",
   "scripts": {
-    "prepublish": "rimraf lib && webpack"
+    "build": "rimraf lib && webpack",
+    "prepublish": "yarn build"
   },
   "dependencies": {
     "rxjs": "^6.5.1"
