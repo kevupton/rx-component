@@ -1,7 +1,18 @@
-## Reactive X Component
+# Reactive X Component
 
 Creates a ReactiveXComponent using RxJS as state management
 
+### Install
+
+```bash
+yarn add reactive-x-component
+```
+
+```bash
+npm i --save reactive-x-component
+```
+
+### Usage
 
 **test.ts**
 ```ts
