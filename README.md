@@ -15,7 +15,7 @@ npm i --save reactive-x-component
 ### Usage
 
 **test.ts**
-```ts
+```tsx
 import React, { Component } from 'react';
 import { Subject, interval } from 'rxjs';
 import { ReactiveXComponent } from 'reactive-x-component';
@@ -51,7 +51,7 @@ export default ReactiveXComponent(staticProps)(Test);
 ```
 
 **app.ts**
-```ts
+```tsx
 import Test from './test.ts';
 import { interval } from 'rxjs';
 
