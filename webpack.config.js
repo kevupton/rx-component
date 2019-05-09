@@ -62,7 +62,7 @@ module.exports = {
 	},
 
 	output: {
-		filename: '[name].[chunkhash].js',
+		filename: '[name].js',
 		path: path.resolve(__dirname, 'lib'),
     libraryTarget: 'commonjs2'
 	},
