@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Component, ComponentType, createRef, FunctionComponent } from 'react';
+import { Component, ComponentType, createRef } from 'react';
 import { BehaviorSubject, Observable, PartialObserver, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
@@ -47,10 +47,12 @@ const DEFAULT_STATE : () => IStateWithPrevProps = () => ({
   data: {}, props: {}, prevProps: {},
 });
 
+export type EnforceStaticProps<O, T> = InferredProps<O> extends T ? O : never;
+
 export function RxComponent<StaticProps extends IStaticProps = {}>
 (staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>) {
 
-  return function <CompType extends ComponentType<any>> (WrappedComponent : CompType) :
+  return function <CompType extends ComponentType<ObservableValues<StaticProps> & InferredProps<CompType>>> (WrappedComponent : CompType) :
     ComponentType<Separate<CompType, StaticProps> & ClassFns<CompType>> {
 
     return class extends Component<any, IState> {
@@ -262,7 +264,7 @@ export function RxComponent<StaticProps extends IStaticProps = {}>
   };
 }
 
-function isFunctionComponent<T = any> (component : ComponentType<T>) : component is FunctionComponent<T> {
+function isFunctionComponent (component : ComponentType<any>) {
   return !!(
     typeof component === 'function' &&
     String(component).includes('return React.createElement')

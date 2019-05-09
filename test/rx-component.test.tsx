@@ -6,6 +6,11 @@ import { RxComponent } from '../src';
 interface TestProps {
   counter : number;
   counter$ : number;
+  c : number;
+}
+
+interface TestProps2 {
+
 }
 
 class Test extends Component<TestProps> {
@@ -16,22 +21,23 @@ class Test extends Component<TestProps> {
   }
 }
 
-const RxTest = RxComponent()(Test);
+class Test2 extends Component<TestProps2> {
+  public readonly value$ = interval(1000);
+
+  render () {
+    return (<div>{ }</div>);
+  }
+}
+
+const RxTest = RxComponent({ c: interval(1000) })(Test);
+const RxTest2 = RxComponent()(Test2);
 
 export default RxTest;
 export const App = () => (<div>
-  <RxTest counter={ 2 } counter$={ interval(2000) } value$={ { next: v => v.toExponential(2) } } />
+  <RxTest2 value$={() => {}}/>
+  <RxTest counter={ 2 } counter$={ interval(2000) } value$={ { next: v => v.toExponential(2) } }/>
 </div>);
 
-export const FnTest = RxComponent({ b: interval(1000) })(({ b }) => (
-  <div>{ b }</div>
+export const FnTest = RxComponent({ berf: interval(1000) })(({ berf }) => (
+  <div>{ berf }</div>
 ));
-
-
-type TT<T> = T extends string ? T : never;
-
-function B<D>(a : TT<D>) : D {
-  return {} as any;
-}
-
-const b = B(2);
