@@ -49,8 +49,6 @@ const DEFAULT_STATE : () => IStateWithPrevProps = () => ({
   obsValues: {}, basicProps: {}, prevProps: {},
 });
 
-// export type EnforceStaticProps<O, T> = InferredProps<O> extends T ? O : never;
-
 export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 (staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>) {
 
@@ -91,14 +89,18 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         const { prevProps } = this.stateSubject.value;
         this.update({ prevProps: props });
 
-        this.subscribeToProps(prevProps, props);
+        this.updateObservableProps(prevProps, props);
         this.updateOtherProps(prevProps, props);
       }
 
       private updateOtherProps (prevProps : any, props : any) {
-        const { added, different, changes } = this.calculateDifferences(prevProps, props, false);
+        const { added, different, changes, removed } = this.calculateDifferences(prevProps, props, false);
 
         if (changes) {
+
+          logger.info('Basic Props Changed');
+          logger.debug({ added, different, removed });
+
           const newProps : any = {};
           added.concat(different).forEach(key =>
             newProps[key] = props[key],
@@ -129,11 +131,11 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
        * @param prevProps
        * @param props
        */
-      private subscribeToProps (prevProps : any, props : any) {
+      private updateObservableProps (prevProps : any, props : any) {
         const { added, different, removed, changes } = this.calculateDifferences(prevProps, props);
 
         if (changes) {
-          logger.info('Props Updated');
+          logger.info('Observables Changed');
           logger.debug({ added, different, removed });
         }
         different.concat(removed).forEach(prop => this.removePropSubscription(prop));

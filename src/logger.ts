@@ -38,7 +38,6 @@ class Logger {
     }
 
     const prefixColor = chalk.hex(color).dim;
-    // const mainColor   = chalk.hex(color);
 
     const tab       = (prefix.length < 8 ? '\t' : ' ');
     const time      = new Date();
