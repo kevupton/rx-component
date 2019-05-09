@@ -84,7 +84,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       private triggerUpdate (props : any) {
         logger.debug('triggering update');
-        logger.debug(props);
+        logger.debug('props: ', props);
 
         const { prevProps } = this.stateSubject.value;
         this.update({ prevProps: props });
@@ -99,7 +99,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         if (changes) {
 
           logger.info('Basic Props Changed');
-          logger.debug({ added, different, removed });
+          logger.debug('changes: ', { added, different, removed });
 
           const newProps : any = {};
           added.concat(different).forEach(key =>
@@ -112,9 +112,13 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       public render () {
         const { obsValues, basicProps } = this.state;
-        const values          = { ...basicProps, ...obsValues };
-        const W               = WrappedComponent as any;
-        if (isFunctionComponent(WrappedComponent)) {
+        const values                    = { ...basicProps, ...obsValues };
+        const W                         = WrappedComponent as any;
+        const isFnCmp                   = isFunctionComponent(WrappedComponent);
+
+        logger.debug('rendering component. is FunctionComponent: ', isFnCmp);
+
+        if (isFnCmp) {
           return (
             <W { ...values } />
           );
@@ -136,7 +140,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
         if (changes) {
           logger.info('Observables Changed');
-          logger.debug({ added, different, removed });
+          logger.debug('changes: ', { added, different, removed });
         }
         different.concat(removed).forEach(prop => this.removePropSubscription(prop));
         added.concat(different).forEach(prop => this.addPropSubscription(prop, props));
@@ -178,6 +182,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
        */
       private addPropSubscription (prop : string, props : any) {
         const propValue                        = (props as any)[prop];
+        const current : any                    = this.reference.current;
         let subscription : Subscription | null = null;
 
         if (propValue instanceof Observable) {
@@ -189,22 +194,22 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
             },
           }));
         }
-        else if (this.isSubscribable(propValue)) {
-          const current : any = this.reference.current;
+        else if (current && current.hasOwnProperty(prop) &&
+          this.isSubscribable(propValue)) {
+          const referenceValue = current[prop];
 
-          if (current && current.hasOwnProperty(prop)) {
-            const referenceValue = current[prop];
-
-            // noinspection SuspiciousTypeOfGuard - Reason editor validation
-            if (referenceValue instanceof Observable) {
-              logger.info(`sending subscriber for [${ prop }]`);
-              subscription = referenceValue.subscribe(propValue);
-            }
+          // noinspection SuspiciousTypeOfGuard - Reason editor validation
+          if (referenceValue instanceof Observable) {
+            logger.info(`sending subscriber for [${ prop }]`);
+            subscription = referenceValue.subscribe(propValue);
+          }
+          else {
+            logger.warning(`Received a subscribable property, but nothing to subscribe to. Prop: [${ prop }]`);
           }
         }
 
         if (subscription) {
-          logger.debug(`setting sub [${ prop }]`);
+          logger.debug(`saving subscription [${ prop }]`);
           this.propSubscriptions.set(prop, subscription);
         }
       }
@@ -251,7 +256,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
             return a.basicProps === b.basicProps && a.obsValues === b.obsValues;
           }),
           tap(() => logger.info('updating state')),
-          tap(({ obsValues, basicProps }) => logger.debug({ obsValues, basicProps })),
+          tap(({ obsValues, basicProps }) => logger.debug('state: ', { ...basicProps, ...obsValues })),
         ).subscribe(({ obsValues, basicProps }) => this.setState({ obsValues, basicProps }));
 
         this.staticSubscriptions.add(subscription);
