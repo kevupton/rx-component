@@ -1,6 +1,6 @@
 {
   "name": "reactive-x-component",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "React Reactive X Component using RxJS as State Management",
   "main": "lib/index.ts",
   "types": "lib/index.d.ts",
@@ -8,7 +8,7 @@
   "author": "Kevin Upton <k_upton@live.com>",
   "license": "MIT",
   "scripts": {
-    "prepublish": "rimraf lib"
+    "prepublish": "rimraf lib && webpack"
   },
   "dependencies": {
     "rxjs": "^6.5.1"
