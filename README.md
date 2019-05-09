@@ -14,7 +14,7 @@ npm i --save reactive-x-component
 
 ### Usage
 
-**test.ts**
+**Test.tsx**
 ```tsx
 import React, { Component } from 'react';
 import { Subject, interval } from 'rxjs';
@@ -31,7 +31,7 @@ interface Event {
 }
 
 class Test extends Component<Props> {
-  public readonly events$ = new Subject<number>();
+  public readonly events$ = new Subject<Event>();
   
   render() {
     const { counter, counter2, message } = this.props;
@@ -50,18 +50,19 @@ const staticProps = {
 export default ReactiveXComponent(staticProps)(Test);
 ```
 
-**app.ts**
+**Example.tsx**
 ```tsx
-import Test from './test.ts';
+import React from 'react';
+import Test from './Test';
 import { interval } from 'rxjs';
 
 const seconds$ = interval(1000);
 
-const App = () => (<div>
+export default () => (<div>
   <Test counter={seconds$} // insert observable into property to be flattened
-        message="This can be either an Observable<string> or string"  // can instert Observable<T> | T where T is the type.
+        message="Message: This can be either an Observable<string> or string"  // can instert Observable<T> | T where T is the type.
         // no need to have `counter2` as a prop as it is supplied in the staticProps in the previous file.
-        events$={event => console.log(event.data + 10)} // Pass a function to be subscribed on the public property
+        events$={event => console.log(event.value + 10)} // Pass a function to be subscribed on the public property `events$`
         />
 </div>);
 ```
