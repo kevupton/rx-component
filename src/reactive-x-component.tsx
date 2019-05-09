@@ -65,7 +65,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       public componentDidMount () {
         logger.info('component did mount');
         this.listenToStateUpdates();
-        this.subscribeToStaticProps();
+        this.subscribeToStaticProps(staticProps || {});
 
         this.triggerUpdate(this.props);
       }
@@ -116,7 +116,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         const W                         = WrappedComponent as any;
         const isFnCmp                   = isFunctionComponent(WrappedComponent);
 
-        logger.debug(`rendering component [${isFnCmp ? 'FunctionComponent' : 'ComponentClass'}]`);
+        logger.debug(`rendering component [${ isFnCmp ? 'FunctionComponent' : 'ComponentClass' }]`);
 
         if (isFnCmp) {
           return (
@@ -176,10 +176,6 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         };
       }
 
-      /**
-       *
-       * @param prop
-       */
       private addPropSubscription (prop : string, props : any) {
         const propValue                        = (props as any)[prop];
         const current : any                    = this.reference.current;
@@ -187,12 +183,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
         if (propValue instanceof Observable) {
           logger.info(`subscribing to observable [${ prop }]`);
-          subscription = propValue.subscribe(result => this.update({
-            obsValues: {
-              ...this.stateSubject.value.obsValues,
-              [prop]: result,
-            },
-          }));
+          subscription = propValue.subscribe(result => this.updateObservableValue(prop, result));
         }
         else if (current && current.hasOwnProperty(prop)) {
           logger.debug('found [' + prop + '] on reference component');
@@ -269,18 +260,25 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         this.staticSubscriptions.add(subscription);
       }
 
-      private subscribeToStaticProps () {
-        Object.keys(staticProps as any)
+      private subscribeToStaticProps (obj : IStaticProps) {
+        Object.keys(obj)
           .forEach(key => {
             this.staticSubscriptions.add(
-              (staticProps as any)[key].subscribe((value : string) => this.update({
-                obsValues: {
-                  ...this.stateSubject.value.obsValues,
-                  [key]: value,
-                },
-              })),
+              obj[key].subscribe(value => this.updateObservableValue(key, value)),
             );
           });
+      }
+
+      private updateObservableValue (key : string, value : any) {
+        logger.debug('updating observable value');
+        logger.debug({ key, value });
+
+        this.update({
+          obsValues: {
+            ...this.stateSubject.value.obsValues,
+            [key]: value,
+          },
+        });
       }
     };
   };
