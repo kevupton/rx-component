@@ -27,9 +27,15 @@ const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
 module.exports = {
 	module: {
 		rules: [
+      {
+        test: /\.tsx?$/,
+        loader: 'ts-loader',
+        exclude: /node_modules/,
+      },
 			{
 				include: [path.resolve(__dirname, 'src')],
-				loader: ['babel-loader', 'ts-loader'],
+				loader: 'babel-loader',
+        exclude: /node_modules/,
 
 				options: {
 					plugins: ['syntax-dynamic-import'],
@@ -44,23 +50,34 @@ module.exports = {
 					]
 				},
 
-				test: /\.js$/
+				test: /\.jsx?$/
 			}
 		]
 	},
 
+  devtool: 'source-map',
+
 	entry: {
-		index: './src/index'
+		index: './src/index.ts'
 	},
 
 	output: {
 		filename: '[name].[chunkhash].js',
-		path: path.resolve(__dirname, 'lib')
+		path: path.resolve(__dirname, 'lib'),
+    libraryTarget: 'commonjs2'
 	},
 
 	mode: 'production',
 
-	optimization: {
+  resolve: {
+    extensions: ['.ts', '.tsx', '.js']
+  },
+
+  externals: {
+    'react': 'commonjs react' // this line is just to use the React dependency of our parent-testing-project instead of using our own React.
+  },
+
+  optimization: {
 		splitChunks: {
 			cacheGroups: {
 				vendors: {

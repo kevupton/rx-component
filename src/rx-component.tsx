@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Component, ComponentClass, ComponentType, createRef, FunctionComponent } from 'react';
+import { Component, ComponentType, createRef, FunctionComponent } from 'react';
 import { BehaviorSubject, Observable, PartialObserver, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
@@ -7,12 +7,12 @@ type ExceptValues<X, Y> = {
   [Key in keyof X] : Key extends keyof Y ? never : Key
 };
 
-type FilterValues<X, Y> = {
-  [Key in keyof X] : X[Key] extends Y ? Key : never;
+type FilterObservables<X> = {
+  [Key in keyof X] : Key extends 'context' ? never : X[Key] extends Observable<any> ? Key : never;
 }
 
 type AllExcept<X, Y> = keyof Y extends never ? X : Pick<X, ExceptValues<X, Y>[keyof X]>;
-type AllObservables<X> = Pick<X, FilterValues<X, Observable<any>>[keyof X]>;
+type AllObservables<X> = Pick<X, FilterObservables<X>[keyof X]>;
 type Subscribable<T> = ((value : T) => void) | PartialObserver<T>;
 type ObsFunctions<X> = {
   [Key in keyof X] : X[Key] extends Observable<infer R> ? Subscribable<R> : X[Key];
@@ -47,10 +47,10 @@ const DEFAULT_STATE : () => IStateWithPrevProps = () => ({
   data: {}, props: {}, prevProps: {},
 });
 
-export function ReactiveXComponent<StaticProps extends IStaticProps, Props extends ObservableValues<StaticProps> = any>
+export function RxComponent<StaticProps extends IStaticProps = {}>
 (staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>) {
 
-  return function <CompType extends ComponentType<Props>> (WrappedComponent : CompType) :
+  return function <CompType extends ComponentType<any>> (WrappedComponent : CompType) :
     ComponentType<Separate<CompType, StaticProps> & ClassFns<CompType>> {
 
     return class extends Component<any, IState> {
@@ -260,13 +260,6 @@ export function ReactiveXComponent<StaticProps extends IStaticProps, Props exten
       }
     };
   };
-}
-
-function isClassComponent<T = any> (component : ComponentType<any>) : component is ComponentClass<T> {
-  return !!(
-    typeof component === 'function' &&
-    !!component.prototype.isReactComponent
-  );
 }
 
 function isFunctionComponent<T = any> (component : ComponentType<T>) : component is FunctionComponent<T> {
