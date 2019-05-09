@@ -51,7 +51,7 @@ class Logger {
     const time      = new Date();
     const timestamp = `${ tab }[${ ('0' + time.getHours()).slice(-2) }:${ ('0' + time.getMinutes()).slice(-2) }]${ tab }`;
 
-    console.log(prefixColor(prefix + timestamp) + mainColor(output) + '\n');
+    console.log(prefixColor(prefix + timestamp) + mainColor(output));
   }
 }
 
