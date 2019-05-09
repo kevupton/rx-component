@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Component } from 'react';
 import { interval } from 'rxjs';
-import { RxComponent } from '../src';
+import { ReactiveXComponent } from '../src';
 
 interface TestProps {
   counter : number;
@@ -29,8 +29,8 @@ class Test2 extends Component<TestProps2> {
   }
 }
 
-const RxTest = RxComponent({ c: interval(1000) })(Test);
-const RxTest2 = RxComponent()(Test2);
+const RxTest = ReactiveXComponent({ c: interval(1000) })(Test);
+const RxTest2 = ReactiveXComponent()(Test2);
 
 export default RxTest;
 export const App = () => (<div>
@@ -38,6 +38,6 @@ export const App = () => (<div>
   <RxTest counter={ 2 } counter$={ interval(2000) } value$={ { next: v => v.toExponential(2) } }/>
 </div>);
 
-export const FnTest = RxComponent({ berf: interval(1000) })(({ berf }) => (
+export const FnTest = ReactiveXComponent({ berf: interval(1000) })(({ berf }) => (
   <div>{ berf }</div>
 ));

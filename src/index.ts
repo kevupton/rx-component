@@ -1,2 +1,2 @@
-export * from './rx-component';
+export * from './reactive-x-component';
 import './test';

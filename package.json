@@ -1,7 +1,7 @@
 {
-  "name": "rx-component",
+  "name": "reactive-x-component",
   "version": "0.0.1",
-  "description": "React RxComponent using RxJS as State Management",
+  "description": "React Reactive X Component using RxJS as State Management",
   "main": "src/index.ts",
   "repository": "https://github.com/kevupton/rx-component",
   "author": "Kevin Upton <k_upton@live.com>",

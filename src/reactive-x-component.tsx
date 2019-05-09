@@ -49,7 +49,7 @@ const DEFAULT_STATE : () => IStateWithPrevProps = () => ({
 
 export type EnforceStaticProps<O, T> = InferredProps<O> extends T ? O : never;
 
-export function RxComponent<StaticProps extends IStaticProps = {}>
+export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 (staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>) {
 
   return function <CompType extends ComponentType<ObservableValues<StaticProps> & InferredProps<CompType>>> (WrappedComponent : CompType) :
