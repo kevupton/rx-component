@@ -16,6 +16,8 @@ npm i --save reactive-x-component
 
 [Demo in Action](https://stackblitz.com/edit/reactive-x-component)
 
+https://stackblitz.com/edit/reactive-x-component?embed=1&file=index.tsx
+
 ### Usage
 
 **Test.tsx**
