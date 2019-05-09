@@ -25,7 +25,7 @@ type AllowBothOptions<T> = {
 }
 
 type Separate<T, Y> = AllowBothOptions<AllExcept<InferredProps<T>, Y>>;
-type InferredProps<T> = T extends ComponentType<infer P> ? P : never;
+type InferredProps<T> = T extends ComponentType<infer P> ? P : T;
 type ObservableValues<T> = {
   [Key in keyof T] : T[Key] extends Observable<infer R> ? R : T[Key];
 }
@@ -47,7 +47,7 @@ const DEFAULT_STATE : () => IStateWithPrevProps = () => ({
   data: {}, props: {}, prevProps: {},
 });
 
-export type EnforceStaticProps<O, T> = InferredProps<O> extends T ? O : never;
+// export type EnforceStaticProps<O, T> = InferredProps<O> extends T ? O : never;
 
 export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 (staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>) {
