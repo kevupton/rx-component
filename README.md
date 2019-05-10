@@ -14,7 +14,7 @@ npm i --save reactive-x-component
 
 ## Stackblitz
 
-[Demo in Action](https://stackblitz.com/edit/reactive-x-component)
+### [Demo in Action](https://stackblitz.com/edit/reactive-x-component)
 
 ## Usage
 ```tsx
