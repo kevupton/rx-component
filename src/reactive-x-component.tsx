@@ -101,9 +101,9 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       }
 
       public componentWillUnmount () {
+        info('component unmounting. Unsubscribing from all Observables');
         // unsubscribe to all staticProps
         this.subscriptions.unsubscribe();
-        info('component unmounting');
       }
 
       public componentDidUpdate () {
@@ -305,6 +305,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       private subscribeToStaticProps (obj : IStaticProps) {
         Object.keys(obj)
           .forEach(key => {
+            debug(`subscribing to StaticProp [${ key }]`);
             this.subscriptions.add(
               obj[key].subscribe(value => this.updateObservableValue({ [key]: value })),
             );
