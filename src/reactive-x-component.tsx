@@ -53,14 +53,18 @@ const DEFAULT_STATE : (defaultValues? : Record<string, any>) => IState = (defaul
 });
 
 export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
-(staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>, debugName? : string) {
+(staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>, debugName : string = '') {
 
-  const log = (cmd : 'debug' | 'info', args : any[]) => logger[cmd](...(debugName ? [debugName, ...args] : args));
-  const debug = (...args : any[]) => log('debug', args);
-  const info = (...args : any[]) => log('info', args);
-
-  return function <CompType extends ComponentType<ObservableValues<StaticProps> & InferredProps<CompType>>> (WrappedComponent : CompType) :
+  return function <CompType extends ComponentType<ObservableValues<StaticProps> & InferredProps<CompType>>> (
+    WrappedComponent : CompType,
+    classDebugName = '',
+  ) :
     ComponentType<Separate<CompType, StaticProps> & ClassFns<CompType>> {
+
+    const o : (val : string) => any[] = (val : string) => val ? [val] : [];
+    const args                        = [...o(debugName), ...o(classDebugName)];
+    const info                        = logger.info.bind(logger, ...args);
+    const debug                       = logger.debug.bind(logger, ...args);
 
     return class extends Component<any, IState> {
       public readonly state              = DEFAULT_STATE(defaultState);
@@ -79,8 +83,8 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         debug('default state: ', this.state);
 
         /*
-          IMPORTANT: This must run first so that it inherits all of the default values.
-          Set the default state values for the subject.
+         IMPORTANT: This must run first so that it inherits all of the default values.
+         Set the default state values for the subject.
          */
         this.update(this.state);
 
@@ -89,7 +93,6 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
         // resubscribe to all of the props
         this.detectChanges(this.props);
-
 
         // start accepting state updates
         this.acceptingStateUpdates = true;
@@ -180,9 +183,9 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         added.concat(different).forEach(prop => this.addPropSubscription(prop, props));
 
         /*
-          Remove the keys afterwards, in the scenario the observable simply just changes,
-          we can keep the old value there until a new one is received.
-          But if the key has been removed completely, then we should remove it completely also.
+         Remove the keys afterwards, in the scenario the observable simply just changes,
+         we can keep the old value there until a new one is received.
+         But if the key has been removed completely, then we should remove it completely also.
          */
         this.removeObservableKeys(removed);
 
@@ -329,7 +332,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       private removeObservableKeys (keys : string[]) {
         const obsValues = { ...this.stateSubject.value.obsValues };
-        let changes = false;
+        let changes     = false;
 
         keys.forEach(key => {
           if (obsValues.hasOwnProperty(key)) {
