@@ -41,7 +41,8 @@ class Logger {
 
     const tab       = (prefix.length < 8 ? '\t' : ' ');
     const time      = new Date();
-    const timestamp = `${ tab }[${ ('0' + time.getHours()).slice(-2) }:${ ('0' + time.getMinutes()).slice(-2) }]${ tab }`;
+    const f = (nb : number, total = 2) => ('0'.repeat(total) + nb).slice(-total);
+    const timestamp = `${ tab }[${ f(time.getHours()) }:${ f(time.getMinutes()) }:${ f(time.getSeconds()) }.${ f(time.getMilliseconds(), 3) }]${ tab }`;
 
     console[method](prefixColor(prefix + timestamp), ...output);
   }
