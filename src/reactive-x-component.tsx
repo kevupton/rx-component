@@ -41,9 +41,12 @@ interface IState {
   basicProps : Record<string, any>;
 }
 
-interface IStateWithPrevProps extends IState {
+interface IPreviousValues {
   prevProps : Record<string, any>;
+  prevState : Record<string, any>;
 }
+
+type StateWithPrevious = IState & IPreviousValues
 
 const DEFAULT_STATE : (defaultValues? : Record<string, any>) => IState = (defaultValues = {}) => ({
   obsValues: {
@@ -52,12 +55,17 @@ const DEFAULT_STATE : (defaultValues? : Record<string, any>) => IState = (defaul
   basicProps: {},
 });
 
+interface IClassOptions {
+  classDebugName : string;
+  persistState : boolean;
+}
+
 export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 (staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>, debugName : string = '') {
 
   return function <CompType extends ComponentType<ObservableValues<StaticProps> & InferredProps<CompType>>> (
     WrappedComponent : CompType,
-    classDebugName = '',
+    { classDebugName = '', persistState } : IClassOptions,
   ) :
     ComponentType<Separate<CompType, StaticProps> & ClassFns<CompType>> {
 
@@ -70,8 +78,8 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       public readonly state              = DEFAULT_STATE(defaultState);
       private readonly reference         = createRef<typeof WrappedComponent>();
       private readonly propSubscriptions = new Map<string, Subscription>();
-      private readonly stateSubject      = new BehaviorSubject<IStateWithPrevProps>({
-        ...this.state, prevProps: {},
+      private readonly stateSubject      = new BehaviorSubject<StateWithPrevious>({
+        ...this.state, prevProps: {}, prevState: this.state,
       });
       private subscriptions              = new Subscription();
       private acceptingStateUpdates      = true; // determines whether or not the updates are applied to state.
@@ -80,13 +88,13 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         info('component did mount');
 
         debug('initializing with default values');
-        debug('default state: ', this.state);
+        debug('default state: ', this.stateSubject.value.prevState);
 
         /*
          IMPORTANT: This must run first so that it inherits all of the default values.
          Set the default state values for the subject.
          */
-        this.update(this.state);
+        this.update(this.stateSubject.value.prevState);
 
         this.listenToStateUpdates();
         this.subscribeToStaticProps(staticProps || {});
@@ -286,7 +294,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         };
       }
 
-      private update (state : Partial<IStateWithPrevProps>) {
+      private update (state : Partial<StateWithPrevious>) {
         this.stateSubject.next({
           ...this.stateSubject.value,
           ...state,
@@ -303,11 +311,21 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           filter(() => this.acceptingStateUpdates),
           // detect if there are changes with any of the objects
           distinctUntilChanged((a, b) => {
-            return a.basicProps === b.basicProps && a.obsValues === b.obsValues && a.prevProps === b.prevProps;
+            return a.basicProps === b.basicProps && a.obsValues === b.obsValues;
           }),
           tap(() => info('updating state')),
           tap(({ obsValues, basicProps }) => debug('state: ', { ...basicProps, ...obsValues })),
-        ).subscribe(newState => this.setState({ ...newState }));
+        ).subscribe(({ basicProps, obsValues }) => {
+          // register the previous state for persistence across mount / dismount
+          if (persistState) {
+            this.stateSubject.next({
+              ...this.stateSubject.value,
+              prevState: { ...this.state },
+            });
+          }
+
+          this.setState({ basicProps, obsValues });
+        });
 
         this.subscriptions.add(subscription);
       }
