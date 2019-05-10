@@ -12,6 +12,8 @@ yarn add reactive-x-component
 npm i --save reactive-x-component
 ```
 
+---
+
 ## [Demo in Stackblitz](https://stackblitz.com/edit/reactive-x-component)
 
 ## Usage
@@ -103,6 +105,9 @@ ReactiveXComponent(staticProps, defaultValues)(componentType)
 | `defaultValues`| `undefined`  |A `Partial<StaticProps>` which is the initial state value for these observables            |
 | `componentType`| **Required** | A `ComponentType<any>`. Can be either a `FunctionComponent` or `ComponentClass`            |
 
+Returns a component with props as `Observable<T> | T` and also *optional* `Subscriber<T>` for public observable attributes.
+
+---
 
 ### How does it work?
 This ReactiveXComponent does two things:
