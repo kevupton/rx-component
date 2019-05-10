@@ -71,12 +71,18 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       public componentDidMount () {
         logger.info('component did mount');
 
-        // subscribes to the stateSubject, which updates the state on change
+        logger.debug('initializing with default values');
+        logger.debug('default state: ', this.state);
+
+        /*
+          IMPORTANT: This must run first so that it inherits all of the default values.
+          Set the default state values for the subject.
+         */
+        this.update(this.state);
+
         this.listenToStateUpdates();
         this.subscribeToStaticProps(staticProps || {});
 
-        // Set the default state values for the subject
-        this.update({ ...this.state });
         // resubscribe to all of the props
         this.detectChanges(this.props);
 
