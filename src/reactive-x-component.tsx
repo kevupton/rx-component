@@ -84,6 +84,13 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       private subscriptions              = new Subscription();
       private acceptingStateUpdates      = true; // determines whether or not the updates are applied to state.
 
+      constructor(props : any) {
+        super(props);
+
+        debug('Constructing ReactiveXComponent');
+        debug('construction props: ', props);
+      }
+
       public componentDidMount () {
         info('component did mount');
 
@@ -318,6 +325,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         ).subscribe(({ basicProps, obsValues }) => {
           // register the previous state for persistence across mount / dismount
           if (persistState) {
+            debug('persisting state');
             this.stateSubject.next({
               ...this.stateSubject.value,
               prevState: { ...this.state },
