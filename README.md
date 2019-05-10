@@ -12,7 +12,7 @@ yarn add reactive-x-component
 npm i --save reactive-x-component
 ```
 
----
+----
 
 ## [Demo in Stackblitz](https://stackblitz.com/edit/reactive-x-component)
 
@@ -107,7 +107,7 @@ ReactiveXComponent(staticProps, defaultValues)(componentType)
 
 Returns a component with props as `Observable<T> | T` and also *optional* `Subscriber<T>` for public observable attributes.
 
----
+----
 
 ### How does it work?
 This ReactiveXComponent does two things:
