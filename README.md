@@ -12,9 +12,7 @@ yarn add reactive-x-component
 npm i --save reactive-x-component
 ```
 
-## Stackblitz
-
-### [Demo in Action](https://stackblitz.com/edit/reactive-x-component)
+## [Demo in Stackblitz](https://stackblitz.com/edit/reactive-x-component)
 
 ## Usage
 ```tsx
