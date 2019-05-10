@@ -22,16 +22,17 @@ npm i --save reactive-x-component
 ```tsx
 import React, { Component } from 'react';
 import { Subject, interval } from 'rxjs';
+import { startWith } from 'rxjs/operators';
 import { ReactiveXComponent } from 'reactive-x-component';
 
 interface Props {
   counter : number;
-  counter2 : number;
+  counter2 : number | string;
   message : string;
 }
 
 interface Event {
-  value : number;
+  value : string;
 }
 
 class Test extends Component<Props> {
@@ -39,16 +40,25 @@ class Test extends Component<Props> {
   
   render() {
     const { counter, counter2, message } = this.props;
-    return (<div>
-      <span>{ message }</span>
-      <div>Prop Counter: { counter }</div>
-      <div>Static Counter: { counter2 }</div>
+
+    this.events$.next({
+      value: 'Received new event: RENDERED'
+    });
+
+    return (<div style={{ fontSize: '18px'}}>
+      <table>
+      <tbody>
+        <tr><td>Message:</td><td>{ message }</td></tr>
+        <tr><td>Prop Counter:</td><td>{ counter }</td></tr>
+        <tr><td>Static Counter:</td><td>{ counter2 }</td></tr>
+      </tbody>
+      </table>
     </div>);
   }
 }
 
 const staticProps = {
-  counter2: interval(5000),
+  counter2: interval(5000).pipe(startWith('Loading...')),
 };
 
 export default ReactiveXComponent(staticProps)(Test);
@@ -59,15 +69,18 @@ export default ReactiveXComponent(staticProps)(Test);
 import React from 'react';
 import Test from './Test';
 import { interval } from 'rxjs';
+import { startWith } from 'rxjs/operators';
+import FunctionComponent from './FunctionComponent';
 
-const seconds$ = interval(1000);
+const seconds$ = interval(1000).pipe(startWith(0));
 
 export default () => (<div>
   <Test counter={seconds$} // insert observable into property to be flattened
-        message="Message: This can be either an Observable<string> or string"  // can instert Observable<T> | T where T is the type.
+        message="This can be either an Observable<string> or string"  // can instert Observable<T> | T where T is the type.
         // no need to have `counter2` as a prop as it is supplied in the staticProps in the previous file.
-        events$={event => console.log(event.value + 10)} // Pass a function to be subscribed on the public property `events$`
+        events$={event => console.log(event.value)} // Pass a function to be subscribed on the public property `events$`
         />
+  <FunctionComponent />
 </div>);
 ```
 
