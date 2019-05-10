@@ -191,6 +191,9 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         const prevKeys = Object.keys(prevProps).filter(this.filterKeys(prevProps, withRxjsItems));
         const currKeys = Object.keys(currProps).filter(this.filterKeys(currProps, withRxjsItems)).concat(leftovers);
 
+        debug('prevProps', prevKeys);
+        debug('currKeys', currKeys);
+
         const removed : string[]   = [];
         const added : string[]     = [...currKeys];
         const different : string[] = [];
@@ -257,7 +260,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       private isSubscriberType (value : any) {
         return typeof value === 'function' ||
-          (value && (['next', 'complete', 'error']
+          (typeof value === 'object' && (['next', 'complete', 'error']
             .find(key => value.hasOwnProperty(key) && typeof value[key] === 'function')));
       }
 
