@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Component, ComponentType, createRef } from 'react';
 import { BehaviorSubject, Observable, PartialObserver, Subscription } from 'rxjs';
 import { tap } from 'rxjs/internal/operators/tap';
-import { debounceTime, distinctUntilChanged, filter } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { logger } from './logger';
 
 type ExceptValues<X, Y> = {
@@ -43,7 +43,6 @@ interface IState {
 
 interface IPreviousValues {
   prevProps : Record<string, any>;
-  prevState : Record<string, any>;
 }
 
 type StateWithPrevious = IState & IPreviousValues
@@ -57,34 +56,31 @@ const DEFAULT_STATE : (defaultValues? : Record<string, any>) => IState = (defaul
 
 interface IClassOptions {
   classDebugName? : string;
-  persistState? : boolean;
 }
 
 export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
-(staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>, debugName : string = '') {
+(staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>) {
 
   return function <CompType extends ComponentType<ObservableValues<StaticProps> & InferredProps<CompType>>> (
     WrappedComponent : CompType,
-    { classDebugName = '', persistState = false } : IClassOptions = {},
+    { classDebugName = '' } : IClassOptions = {},
   ) :
     ComponentType<Separate<CompType, StaticProps> & ClassFns<CompType>> {
 
-    const o : (val : string) => any[] = (val : string) => val ? [val] : [];
-    const args                        = [...o(debugName), ...o(classDebugName)];
-    const info                        = logger.info.bind(logger, ...args);
-    const debug                       = logger.debug.bind(logger, ...args);
+    const args : any[] = classDebugName ? [classDebugName] : [];
+    const info         = logger.info.bind(logger, ...args);
+    const debug        = logger.debug.bind(logger, ...args);
 
     return class extends Component<any, IState> {
       public readonly state              = DEFAULT_STATE(defaultState);
       private readonly reference         = createRef<typeof WrappedComponent>();
       private readonly propSubscriptions = new Map<string, Subscription>();
       private readonly stateSubject      = new BehaviorSubject<StateWithPrevious>({
-        ...this.state, prevProps: {}, prevState: this.state,
+        ...this.state, prevProps: {},
       });
-      private subscriptions              = new Subscription();
-      private acceptingStateUpdates      = true; // determines whether or not the updates are applied to state.
+      private readonly subscriptions     = new Subscription();
 
-      constructor(props : any) {
+      constructor (props : any) {
         super(props);
 
         debug('Constructing ReactiveXComponent');
@@ -95,39 +91,19 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         info('component did mount');
 
         debug('initializing with default values');
-        debug('default state: ', this.stateSubject.value.prevState);
-
-        /*
-         IMPORTANT: This must run first so that it inherits all of the default values.
-         Set the default state values for the subject.
-         */
-        this.update(this.stateSubject.value.prevState);
+        debug('default state: ', { ...this.state.basicProps, ...this.state.obsValues });
 
         this.listenToStateUpdates();
         this.subscribeToStaticProps(staticProps || {});
 
         // resubscribe to all of the props
         this.detectChanges(this.props);
-
-        // start accepting state updates
-        this.acceptingStateUpdates = true;
-
-        debug('**[ON]** listening to state updates');
       }
 
       public componentWillUnmount () {
-        // stop listening to state updates before we empty all of the subscriptions.
-        this.acceptingStateUpdates = false;
-        debug('**[OFF]** stopped listening to state updates');
-
-        // force the object to unsubscribe to all subscriptions
-        this.detectChanges({});
         // unsubscribe to all staticProps
         this.subscriptions.unsubscribe();
-
-        this.subscriptions = new Subscription();
         info('component unmounting');
-        debug('completing state: ', this.state);
       }
 
       public componentDidUpdate () {
@@ -269,6 +245,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         if (subscription) {
           debug(`saving subscription [${ prop }]`);
           this.propSubscriptions.set(prop, subscription);
+          this.subscriptions.add(subscription);
         }
       }
 
@@ -310,30 +287,17 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       private listenToStateUpdates () {
         const subscription = this.stateSubject.pipe(
-          // dont update the state if we are not accepting updates (so that we dont delete default values on unmount)
-          filter(() => this.acceptingStateUpdates),
           // merge multiple updates into just one. This way we dont spam setState
           debounceTime(0),
-          // check on both sides incase inconsistencies
-          filter(() => this.acceptingStateUpdates),
           // detect if there are changes with any of the objects
           distinctUntilChanged((a, b) => {
             return a.basicProps === b.basicProps && a.obsValues === b.obsValues;
           }),
           tap(() => info('updating state')),
           tap(({ obsValues, basicProps }) => debug('state: ', { ...basicProps, ...obsValues })),
-        ).subscribe(({ basicProps, obsValues }) => {
-          // register the previous state for persistence across mount / dismount
-          if (persistState) {
-            debug('persisting state');
-            this.stateSubject.next({
-              ...this.stateSubject.value,
-              prevState: { ...this.state },
-            });
-          }
-
-          this.setState({ basicProps, obsValues });
-        });
+        ).subscribe(({ basicProps, obsValues }) =>
+          this.setState({ basicProps, obsValues }),
+        );
 
         this.subscriptions.add(subscription);
       }
