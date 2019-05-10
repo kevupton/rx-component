@@ -6,6 +6,7 @@
   "typings": "lib/index.d.ts",
   "repository": "https://github.com/kevupton/reactive-x-component",
   "author": "Kevin Upton <k_upton@live.com>",
+  "keywords": ["rxjs", "react", "state", "component", "reactive", "observable"],
   "license": "MIT",
   "scripts": {
     "build": "rimraf lib && webpack",
