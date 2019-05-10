@@ -112,6 +112,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
         this.subscriptions = new Subscription();
         info('component unmounting');
+        debug('completing state: ', this.state);
       }
 
       public componentDidUpdate () {
@@ -298,6 +299,8 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           filter(() => this.acceptingStateUpdates),
           // merge multiple updates into just one. This way we dont spam setState
           debounceTime(0),
+          // check on both sides incase inconsistencies
+          filter(() => this.acceptingStateUpdates),
           // detect if there are changes with any of the objects
           distinctUntilChanged((a, b) => {
             return a.basicProps === b.basicProps && a.obsValues === b.obsValues && a.prevProps === b.prevProps;
