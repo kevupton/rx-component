@@ -64,6 +64,10 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       private readonly propSubscriptions = new Map<string, Subscription>();
       private readonly stateSubject      = new BehaviorSubject<IStateWithPrevProps>(DEFAULT_STATE(defaultState));
 
+      /*
+      TODO implement proper way of clearing state on unload. That does not delete the current state data.
+       */
+
       public componentDidMount () {
         logger.info('component did mount');
         this.listenToStateUpdates();
