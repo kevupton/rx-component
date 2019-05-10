@@ -1,6 +1,6 @@
 # Reactive X Component
 
-Creates a ReactiveXComponent using RxJS as state management
+Creates a **React** Component that uses **RxJS** as State management.
 
 ## Install
 
