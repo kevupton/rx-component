@@ -118,12 +118,12 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         const { prevProps } = this.stateSubject.value;
         this.update({ prevProps: props });
 
-        this.updateObservableProps(prevProps, props);
-        this.updateOtherProps(prevProps, props);
+        const leftoverProps = this.updateObservableProps(prevProps, props);
+        this.updateOtherProps(prevProps, props, leftoverProps);
       }
 
-      private updateOtherProps (prevProps : any, props : any) {
-        const { added, different, changes, removed } = this.calculateDifferences(prevProps, props, false);
+      private updateOtherProps (prevProps : any, props : any, leftovers : string[]) {
+        const { added, different, changes, removed } = this.calculateDifferences(prevProps, props, false, leftovers);
 
         if (changes) {
 
@@ -172,7 +172,10 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           debug('changes: ', { added, different, removed });
         }
         different.concat(removed).forEach(prop => this.removePropSubscription(prop));
-        added.concat(different).forEach(prop => this.addPropSubscription(prop, props));
+        // the leftover props are ones that didnt end up getting added
+        const leftovers : string[] = added.concat(different)
+          .map(prop => this.addPropSubscription(prop, props))
+          .filter(Boolean) as string[];
 
         /*
          Remove the keys afterwards, in the scenario the observable simply just changes,
@@ -181,12 +184,12 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
          */
         this.removeObservableKeys(removed);
 
-        return changes;
+        return leftovers;
       }
 
-      private calculateDifferences (prevProps : any, currProps : any, withRxjsItems = true) {
+      private calculateDifferences (prevProps : any, currProps : any, withRxjsItems = true, leftovers : string[] = []) {
         const prevKeys = Object.keys(prevProps).filter(this.filterKeys(prevProps, withRxjsItems));
-        const currKeys = Object.keys(currProps).filter(this.filterKeys(currProps, withRxjsItems));
+        const currKeys = Object.keys(currProps).filter(this.filterKeys(currProps, withRxjsItems)).concat(leftovers);
 
         const removed : string[]   = [];
         const added : string[]     = [...currKeys];
@@ -246,7 +249,10 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           debug(`saving subscription [${ prop }]`);
           this.propSubscriptions.set(prop, subscription);
           this.subscriptions.add(subscription);
+          return null;
         }
+        // return the leftover prop that was supposed to be added but wasn't
+        return prop;
       }
 
       private isSubscriberType (value : any) {
