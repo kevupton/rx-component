@@ -53,7 +53,11 @@ const DEFAULT_STATE : (defaultValues? : Record<string, any>) => IState = (defaul
 });
 
 export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
-(staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>) {
+(staticProps? : StaticProps, defaultState? : Partial<ObservableValues<StaticProps>>, debugName? : string) {
+
+  const log = (cmd : 'debug' | 'info', args : any[]) => logger[cmd](...(debugName ? [debugName, ...args] : args));
+  const debug = (...args : any[]) => log('debug', args);
+  const info = (...args : any[]) => log('info', args);
 
   return function <CompType extends ComponentType<ObservableValues<StaticProps> & InferredProps<CompType>>> (WrappedComponent : CompType) :
     ComponentType<Separate<CompType, StaticProps> & ClassFns<CompType>> {
@@ -69,10 +73,10 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       private acceptingStateUpdates      = true; // determines whether or not the updates are applied to state.
 
       public componentDidMount () {
-        logger.info('component did mount');
+        info('component did mount');
 
-        logger.debug('initializing with default values');
-        logger.debug('default state: ', this.state);
+        debug('initializing with default values');
+        debug('default state: ', this.state);
 
         /*
           IMPORTANT: This must run first so that it inherits all of the default values.
@@ -90,13 +94,13 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         // start accepting state updates
         this.acceptingStateUpdates = true;
 
-        logger.debug('**[ON]** listening to state updates');
+        debug('**[ON]** listening to state updates');
       }
 
       public componentWillUnmount () {
         // stop listening to state updates before we empty all of the subscriptions.
         this.acceptingStateUpdates = false;
-        logger.debug('**[OFF]** stopped listening to state updates');
+        debug('**[OFF]** stopped listening to state updates');
 
         // force the object to unsubscribe to all subscriptions
         this.detectChanges({});
@@ -104,17 +108,17 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         this.subscriptions.unsubscribe();
 
         this.subscriptions = new Subscription();
-        logger.info('component unmounting');
+        info('component unmounting');
       }
 
       public componentDidUpdate () {
-        logger.debug('component did update');
+        debug('component did update');
         this.detectChanges(this.props);
       }
 
       private detectChanges (props : any) {
-        logger.debug('triggering update');
-        logger.debug('props: ', props);
+        debug('triggering update');
+        debug('props: ', props);
 
         const { prevProps } = this.stateSubject.value;
         this.update({ prevProps: props });
@@ -128,8 +132,8 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
         if (changes) {
 
-          logger.info('Basic Props Changed');
-          logger.debug('changes: ', { added, different, removed });
+          info('Basic Props Changed');
+          debug('changes: ', { added, different, removed });
 
           const newProps : any = {};
           added.concat(different).forEach(key =>
@@ -146,7 +150,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         const W                         = WrappedComponent as any;
         const isFnCmp                   = isFunctionComponent(WrappedComponent);
 
-        logger.debug(`rendering component [${ isFnCmp ? 'FunctionComponent' : 'ComponentClass' }]`);
+        debug(`rendering component [${ isFnCmp ? 'FunctionComponent' : 'ComponentClass' }]`);
 
         if (isFnCmp) {
           return (
@@ -169,8 +173,8 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         const { added, different, removed, changes } = this.calculateDifferences(prevProps, props);
 
         if (changes) {
-          logger.info('Observables Changed');
-          logger.debug('changes: ', { added, different, removed });
+          info('Observables Changed');
+          debug('changes: ', { added, different, removed });
         }
         different.concat(removed).forEach(prop => this.removePropSubscription(prop));
         added.concat(different).forEach(prop => this.addPropSubscription(prop, props));
@@ -219,17 +223,17 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         let subscription : Subscription | null = null;
 
         if (propValue instanceof Observable) {
-          logger.info(`subscribing to observable [${ prop }]`);
+          info(`subscribing to observable [${ prop }]`);
           subscription = propValue.subscribe(result => this.updateObservableValue({ [prop]: result }));
         }
         else if (current && current.hasOwnProperty(prop)) {
-          logger.debug('found [' + prop + '] on reference component');
+          debug('found [' + prop + '] on reference component');
           if (this.isSubscriberType(propValue)) {
             const referenceValue = current[prop];
 
             // noinspection SuspiciousTypeOfGuard - Reason editor validation
             if (referenceValue instanceof Observable) {
-              logger.info(`sending subscriber for [${ prop }]`);
+              info(`sending subscriber for [${ prop }]`);
               subscription = referenceValue.subscribe(propValue);
             }
             else {
@@ -239,12 +243,12 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           else {
             logger.warning(`Received prop [${ prop }] which is also on component reference. ` +
               `However propValue is not of Subscriber type`);
-            logger.debug('propValue: ', propValue);
+            debug('propValue: ', propValue);
           }
         }
 
         if (subscription) {
-          logger.debug(`saving subscription [${ prop }]`);
+          debug(`saving subscription [${ prop }]`);
           this.propSubscriptions.set(prop, subscription);
         }
       }
@@ -265,7 +269,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           logger.warning(`no subscription found for [${ prop }]`);
           return;
         }
-        logger.info(`unsubscribing to prop [${ prop }]`);
+        info(`unsubscribing to prop [${ prop }]`);
         subscription.unsubscribe();
 
         this.propSubscriptions.delete(prop);
@@ -295,8 +299,8 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           distinctUntilChanged((a, b) => {
             return a.basicProps === b.basicProps && a.obsValues === b.obsValues && a.prevProps === b.prevProps;
           }),
-          tap(() => logger.info('updating state')),
-          tap(({ obsValues, basicProps }) => logger.debug('state: ', { ...basicProps, ...obsValues })),
+          tap(() => info('updating state')),
+          tap(({ obsValues, basicProps }) => debug('state: ', { ...basicProps, ...obsValues })),
         ).subscribe(newState => this.setState({ ...newState }));
 
         this.subscriptions.add(subscription);
@@ -312,8 +316,8 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       }
 
       private updateObservableValue (obj : Record<string, any>) {
-        logger.debug('received observable value');
-        logger.debug('value: ', obj);
+        debug('received observable value');
+        debug('value: ', obj);
 
         this.update({
           obsValues: {
@@ -329,7 +333,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
         keys.forEach(key => {
           if (obsValues.hasOwnProperty(key)) {
-            logger.debug(`removing observable value key [${ key }]`);
+            debug(`removing observable value key [${ key }]`);
             delete obsValues[key];
             changes = true;
           }
