@@ -112,7 +112,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       }
 
       private detectChanges (props : any) {
-        debug('triggering update');
+        debug('detecting changes for props');
         debug('props: ', props);
 
         const { prevProps } = this.stateSubject.value;
@@ -127,7 +127,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
         if (changes) {
 
-          info('Basic Props Changed');
+          info('detected Basic Prop changes');
           debug('changes: ', { added, different, removed });
 
           const newProps : any = {};
@@ -168,7 +168,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         const { added, different, removed, changes } = this.calculateDifferences(prevProps, props);
 
         if (changes) {
-          info('Observables Changed');
+          info('detected Observables changes');
           debug('changes: ', { added, different, removed });
         }
         different.concat(removed).forEach(prop => this.removePropSubscription(prop));
