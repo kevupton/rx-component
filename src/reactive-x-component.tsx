@@ -75,11 +75,11 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         this.listenToStateUpdates();
         this.subscribeToStaticProps(staticProps || {});
 
+        // Set the default state values for the subject
+        this.update({ ...this.state });
         // resubscribe to all of the props
         this.detectChanges(this.props);
 
-        // Set the default state values for the subject
-        this.update({ ...this.state });
 
         // start accepting state updates
         this.acceptingStateUpdates = true;
@@ -214,7 +214,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
         if (propValue instanceof Observable) {
           logger.info(`subscribing to observable [${ prop }]`);
-          subscription = propValue.subscribe(result => this.updateObservableKeyValue(prop, result));
+          subscription = propValue.subscribe(result => this.updateObservableValue({ [prop]: result }));
         }
         else if (current && current.hasOwnProperty(prop)) {
           logger.debug('found [' + prop + '] on reference component');
@@ -300,19 +300,19 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         Object.keys(obj)
           .forEach(key => {
             this.subscriptions.add(
-              obj[key].subscribe(value => this.updateObservableKeyValue(key, value)),
+              obj[key].subscribe(value => this.updateObservableValue({ [key]: value })),
             );
           });
       }
 
-      private updateObservableKeyValue (key : string, value : any) {
+      private updateObservableValue (obj : Record<string, any>) {
         logger.debug('received observable value');
-        logger.debug({ key, value });
+        logger.debug('value: ', obj);
 
         this.update({
           obsValues: {
             ...this.stateSubject.value.obsValues,
-            [key]: value,
+            ...obj,
           },
         });
       }
