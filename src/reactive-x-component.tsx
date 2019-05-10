@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Component, ComponentType, createRef } from 'react';
 import { BehaviorSubject, Observable, PartialObserver, Subscription } from 'rxjs';
 import { tap } from 'rxjs/internal/operators/tap';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, filter } from 'rxjs/operators';
 import { logger } from './logger';
 
 type ExceptValues<X, Y> = {
@@ -45,10 +45,11 @@ interface IStateWithPrevProps extends IState {
   prevProps : Record<string, any>;
 }
 
-const DEFAULT_STATE : (defaultValues?: Record<string, any>) => IStateWithPrevProps = (defaultValues = {}) => ({
+const DEFAULT_STATE : (defaultValues? : Record<string, any>) => IState = (defaultValues = {}) => ({
   obsValues: {
-    ...defaultValues
-  }, basicProps: {}, prevProps: {},
+    ...defaultValues,
+  },
+  basicProps: {},
 });
 
 export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
@@ -58,37 +59,54 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
     ComponentType<Separate<CompType, StaticProps> & ClassFns<CompType>> {
 
     return class extends Component<any, IState> {
-      public readonly state              = { basicProps: {}, obsValues: defaultState || {} };
+      public readonly state              = DEFAULT_STATE(defaultState);
       private readonly reference         = createRef<typeof WrappedComponent>();
-      private staticSubscriptions        = new Subscription();
       private readonly propSubscriptions = new Map<string, Subscription>();
-      private readonly stateSubject      = new BehaviorSubject<IStateWithPrevProps>(DEFAULT_STATE(defaultState));
-
-      /*
-      TODO implement proper way of clearing state on unload. That does not delete the current state data.
-       */
+      private readonly stateSubject      = new BehaviorSubject<IStateWithPrevProps>({
+        ...this.state, prevProps: {},
+      });
+      private subscriptions              = new Subscription();
+      private acceptingStateUpdates      = true; // determines whether or not the updates are applied to state.
 
       public componentDidMount () {
         logger.info('component did mount');
+
+        // subscribes to the stateSubject, which updates the state on change
         this.listenToStateUpdates();
         this.subscribeToStaticProps(staticProps || {});
 
-        this.triggerUpdate(this.props);
+        // resubscribe to all of the props
+        this.detectChanges(this.props);
+
+        // Set the default state values for the subject
+        this.update({ ...this.state });
+
+        // start accepting state updates
+        this.acceptingStateUpdates = true;
+
+        logger.debug('**[ON]** listening to state updates');
       }
 
       public componentWillUnmount () {
+        // stop listening to state updates before we empty all of the subscriptions.
+        this.acceptingStateUpdates = false;
+        logger.debug('**[OFF]** stopped listening to state updates');
+
+        // force the object to unsubscribe to all subscriptions
+        this.detectChanges({});
+        // unsubscribe to all staticProps
+        this.subscriptions.unsubscribe();
+
+        this.subscriptions = new Subscription();
         logger.info('component unmounting');
-        this.triggerUpdate({});
-        this.staticSubscriptions.unsubscribe();
-        this.staticSubscriptions = new Subscription();
       }
 
       public componentDidUpdate () {
         logger.debug('component did update');
-        this.triggerUpdate(this.props);
+        this.detectChanges(this.props);
       }
 
-      private triggerUpdate (props : any) {
+      private detectChanges (props : any) {
         logger.debug('triggering update');
         logger.debug('props: ', props);
 
@@ -151,6 +169,13 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         different.concat(removed).forEach(prop => this.removePropSubscription(prop));
         added.concat(different).forEach(prop => this.addPropSubscription(prop, props));
 
+        /*
+          Remove the keys afterwards, in the scenario the observable simply just changes,
+          we can keep the old value there until a new one is received.
+          But if the key has been removed completely, then we should remove it completely also.
+         */
+        this.removeObservableKeys(removed);
+
         return changes;
       }
 
@@ -189,7 +214,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
         if (propValue instanceof Observable) {
           logger.info(`subscribing to observable [${ prop }]`);
-          subscription = propValue.subscribe(result => this.updateObservableValue(prop, result));
+          subscription = propValue.subscribe(result => this.updateObservableKeyValue(prop, result));
         }
         else if (current && current.hasOwnProperty(prop)) {
           logger.debug('found [' + prop + '] on reference component');
@@ -236,6 +261,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         }
         logger.info(`unsubscribing to prop [${ prop }]`);
         subscription.unsubscribe();
+
         this.propSubscriptions.delete(prop);
       }
 
@@ -255,28 +281,32 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       private listenToStateUpdates () {
         const subscription = this.stateSubject.pipe(
+          // dont update the state if we are not accepting updates (so that we dont delete default values on unmount)
+          filter(() => this.acceptingStateUpdates),
+          // merge multiple updates into just one. This way we dont spam setState
           debounceTime(0),
+          // detect if there are changes with any of the objects
           distinctUntilChanged((a, b) => {
-            return a.basicProps === b.basicProps && a.obsValues === b.obsValues;
+            return a.basicProps === b.basicProps && a.obsValues === b.obsValues && a.prevProps === b.prevProps;
           }),
           tap(() => logger.info('updating state')),
           tap(({ obsValues, basicProps }) => logger.debug('state: ', { ...basicProps, ...obsValues })),
-        ).subscribe(({ obsValues, basicProps }) => this.setState({ obsValues, basicProps }));
+        ).subscribe(newState => this.setState({ ...newState }));
 
-        this.staticSubscriptions.add(subscription);
+        this.subscriptions.add(subscription);
       }
 
       private subscribeToStaticProps (obj : IStaticProps) {
         Object.keys(obj)
           .forEach(key => {
-            this.staticSubscriptions.add(
-              obj[key].subscribe(value => this.updateObservableValue(key, value)),
+            this.subscriptions.add(
+              obj[key].subscribe(value => this.updateObservableKeyValue(key, value)),
             );
           });
       }
 
-      private updateObservableValue (key : string, value : any) {
-        logger.debug('updating observable value');
+      private updateObservableKeyValue (key : string, value : any) {
+        logger.debug('received observable value');
         logger.debug({ key, value });
 
         this.update({
@@ -285,6 +315,27 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
             [key]: value,
           },
         });
+      }
+
+      private removeObservableKeys (keys : string[]) {
+        const obsValues = { ...this.stateSubject.value.obsValues };
+        let changes = false;
+
+        keys.forEach(key => {
+          if (obsValues.hasOwnProperty(key)) {
+            logger.debug(`removing observable value key [${ key }]`);
+            delete obsValues[key];
+            changes = true;
+          }
+          else {
+            logger.warning(`'obsValues' has no key [${ key }] to delete`);
+          }
+        });
+
+        // if there are actually changes then send an update
+        if (changes) {
+          this.update({ obsValues });
+        }
       }
     };
   };
