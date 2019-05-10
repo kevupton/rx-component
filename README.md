@@ -109,6 +109,8 @@ Returns a component with props as `Observable<T> | T` and also *optional* `Subsc
 
 ----
 
+## FAQ
+
 ### How does it work?
 This ReactiveXComponent does two things:
 
