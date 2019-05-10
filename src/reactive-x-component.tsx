@@ -56,8 +56,8 @@ const DEFAULT_STATE : (defaultValues? : Record<string, any>) => IState = (defaul
 });
 
 interface IClassOptions {
-  classDebugName : string;
-  persistState : boolean;
+  classDebugName? : string;
+  persistState? : boolean;
 }
 
 export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
@@ -65,7 +65,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
   return function <CompType extends ComponentType<ObservableValues<StaticProps> & InferredProps<CompType>>> (
     WrappedComponent : CompType,
-    { classDebugName = '', persistState } : IClassOptions,
+    { classDebugName = '', persistState = false } : IClassOptions = {},
   ) :
     ComponentType<Separate<CompType, StaticProps> & ClassFns<CompType>> {
 
