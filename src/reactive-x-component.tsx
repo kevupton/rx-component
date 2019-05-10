@@ -285,8 +285,9 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 }
 
 function isFunctionComponent (component : ComponentType<any>) {
-  return !!(
-    typeof component === 'function' &&
-    String(component).includes('return React.createElement')
-  );
+  return typeof component === 'function' // can be various things
+    && !(
+      component.prototype // native arrows don't have prototypes
+      && component.prototype.isReactComponent // special property
+    );
 }
