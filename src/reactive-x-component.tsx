@@ -45,8 +45,10 @@ interface IStateWithPrevProps extends IState {
   prevProps : Record<string, any>;
 }
 
-const DEFAULT_STATE : () => IStateWithPrevProps = () => ({
-  obsValues: {}, basicProps: {}, prevProps: {},
+const DEFAULT_STATE : (defaultValues?: Record<string, any>) => IStateWithPrevProps = (defaultValues = {}) => ({
+  obsValues: {
+    ...defaultValues
+  }, basicProps: {}, prevProps: {},
 });
 
 export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
@@ -60,7 +62,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
       private readonly reference         = createRef<typeof WrappedComponent>();
       private staticSubscriptions        = new Subscription();
       private readonly propSubscriptions = new Map<string, Subscription>();
-      private readonly stateSubject      = new BehaviorSubject<IStateWithPrevProps>(DEFAULT_STATE());
+      private readonly stateSubject      = new BehaviorSubject<IStateWithPrevProps>(DEFAULT_STATE(defaultState));
 
       public componentDidMount () {
         logger.info('component did mount');
