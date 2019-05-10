@@ -2,7 +2,7 @@
 
 Creates a ReactiveXComponent using RxJS as state management
 
-### Install
+## Install
 
 ```bash
 yarn add reactive-x-component
@@ -12,12 +12,19 @@ yarn add reactive-x-component
 npm i --save reactive-x-component
 ```
 
-### Stackblitz
+## Stackblitz
 
 [Demo in Action](https://stackblitz.com/edit/reactive-x-component)
 
-### Usage
+## Usage
+```tsx
+import { ReactiveXComponent } from 'reactive-x-component';
 
+// simple wrap your ComponentType using the function and it will start accepting Observables
+export default ReactiveXComponent()(Test);
+```
+
+## Examples
 **Test.tsx**
 ```tsx
 import React, { Component } from 'react';
@@ -84,7 +91,22 @@ export default () => (<div>
 </div>);
 ```
 
-#### How does it work?
+## API
+
+#### **ReactiveXComponent**
+
+```ts
+ReactiveXComponent(staticProps, defaultValues)(componentType)
+```
+
+| Attribute      | Default      | Description                                                                                |
+| ---------------| -------------|---------------------------------------------------------------------------------- |
+| `staticProps`  | `{}`         | An object with values of `Observables<any>` which will be passed into the components props |
+| `defaultValues`| `undefined`  |A `Partial<StaticProps>` which is the initial state value for these observables            |
+| `componentType`| **Required** | A `ComponentType<any>`. Can be either a `FunctionComponent` or `ComponentClass`            |
+
+
+### How does it work?
 This ReactiveXComponent does two things:
 
  - Flattens each `Observable` prop and passes their values to the child component. (Only if the prop is an `Observable`)
@@ -97,8 +119,8 @@ This ReactiveXComponent does two things:
  public readonly eventEmitter$ = new Subject<Event>(); // passes them into something like this
  ```
 
-#### When does it subscribe?
+### When does it subscribe?
 Each Observable is subscribed to on `componentDidMount` or when it is passed in as a prop.
 
-#### When does it unsubscribe?
+### When does it unsubscribe?
 All observables are unsubscribed on `componentWillUnmount` or when the value changes.
