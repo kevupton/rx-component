@@ -84,10 +84,21 @@ export default () => (<div>
 </div>);
 ```
 
-This function does two things:
+#### How does it work?
+This ReactiveXComponent does two things:
 
- - Flattens each `Observable` prop into the wrapped components props. 
+ - Flattens each `Observable` prop and passes their values to the child component. (Only if the prop is an `Observable`)
+ ```tsx
+ <Test counter={interval(1000)} /> // Flattens the interval into its value and passes it directly to the component.
+ ```
 
- - Pass a `function` or `Subscriber` into the component props, and it will be subscribed to the public property.
- 
-Each Observable is subscribed to on `componentDidMount`, and then are unsubscribed on `componentWillUnmount`.
+ - Passes `function`s or `Subscriber`s from props into the child component public `Observable` property (if it exists).
+ ```tsx
+ public readonly eventEmitter$ = new Subject<Event>(); // passes them into something like this
+ ```
+
+#### When does it subscribe?
+Each Observable is subscribed to on `componentDidMount` or when it is passed in as a prop.
+
+#### When does it unsubscribe?
+All observables are unsubscribed on `componentWillUnmount` or when the value changes.
