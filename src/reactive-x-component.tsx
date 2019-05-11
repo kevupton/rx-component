@@ -216,7 +216,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         const addToState = (record : PropRecord) => {
           const { key, value, obs$ } = record;
           if (obs$) {
-            const subscriber = obs$ === value ? this.handleUpdateFn(record) : value;
+            const subscriber = obs$ === value ? this.handleUpdateFn(key) : value;
             debug(`subscribing to props [${ key }]`);
             record.subscription = obs$.subscribe(subscriber);
             this.subscriptions.add(record.subscription);
@@ -246,7 +246,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         added.forEach(addToState);
       }
 
-      private handleUpdateFn ({ key } : PropRecord) {
+      private handleUpdateFn (key : string) {
         return (value : any) => {
           debug('received updated value');
           debug({ [key]: value });
@@ -321,7 +321,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           .forEach(key => {
             debug(`subscribing to StaticProp [${ key }]`);
             this.subscriptions.add(
-              obj[key].subscribe(value => this.update({ [key]: value })),
+              obj[key].subscribe(this.handleUpdateFn(key)),
             );
           });
       }
