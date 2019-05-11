@@ -205,6 +205,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       private handleChanges (changes : PropChanges) {
         if (!changes.changes) {
+          debug('no changes');
           return;
         }
 
