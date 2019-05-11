@@ -98,15 +98,15 @@ export default () => (<div>
 #### **ReactiveXComponent**
 
 ```ts
-ReactiveXComponent(staticProps, defaultValues)(componentType)
+ReactiveXComponent(staticProps, defaultValues)(componentType, options)
 ```
 
 | Attribute      | Default      | Description                                                                                |
 | ---------------| -------------|---------------------------------------------------------------------------------- |
 | `staticProps`  | `{}`         | An object with values of `Observables<any>` which will be passed into the components props |
-| `defaultValues`| `undefined`  |A `Partial<StaticProps>` which is the initial state value for these observables            |
+| `defaultValues`| `undefined`  | A `Partial<StaticProps>` which is the initial state value for these observables            |
 | `componentType`| **Required** | A `ComponentType<any>`. Can be either a `FunctionComponent` or `ComponentClass`            |
-
+| `options`      | `undefined`  | Used for debugging purposes only at this stage. You can specify a name to prefix the debug log |
 Returns a component with props as `Observable<T> | T` and also *optional* `Subscriber<T>` for public observable attributes.
 
 ----
