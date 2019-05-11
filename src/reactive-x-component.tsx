@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Component, ComponentType, createRef } from 'react';
 import { BehaviorSubject, Observable, PartialObserver, Subscription } from 'rxjs';
 import { tap } from 'rxjs/internal/operators/tap';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { debounceTime, distinctUntilKeyChanged } from 'rxjs/operators';
 import { logger } from './logger';
 
 type ExceptValues<X, Y> = {
@@ -37,25 +37,59 @@ interface IStaticProps {
 }
 
 interface IState {
-  obsValues : Record<string, any>;
-  basicProps : Record<string, any>;
+  state : Record<string, any>;
 }
 
+type Subscriber<T = any> = PartialObserver<T> | ((value : T) => void);
+
+interface DefaultRecord {
+  key : string;
+  subscription? : Subscription;
+}
+
+interface ObservableRecord extends DefaultRecord {
+  value : Observable<any>;
+  obs$ : Observable<any>;
+}
+
+interface SubscriberRecord extends DefaultRecord {
+  value : Subscriber;
+  obs$ : Observable<any>;
+}
+
+interface BasicRecord extends DefaultRecord {
+  value : any;
+  obs$? : undefined;
+}
+
+type PropRecord = BasicRecord | SubscriberRecord | ObservableRecord;
+
 interface IPreviousValues {
-  prevProps : Record<string, any>;
+  prevRecords : PropRecord[];
 }
 
 type StateWithPrevious = IState & IPreviousValues
 
 const DEFAULT_STATE : (defaultValues? : Record<string, any>) => IState = (defaultValues = {}) => ({
-  obsValues: {
+  state: {
     ...defaultValues,
   },
-  basicProps: {},
 });
 
 interface IClassOptions {
   classDebugName? : string;
+}
+
+interface PropRecordDifference {
+  oldRecord : PropRecord;
+  newRecord : PropRecord;
+}
+
+interface PropChanges {
+  added : PropRecord[];
+  different : PropRecordDifference[];
+  removed : PropRecord[];
+  changes : number;
 }
 
 export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
@@ -70,15 +104,15 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
     const args : any[] = classDebugName ? [classDebugName] : [];
     const info         = logger.info.bind(logger, ...args);
     const debug        = logger.debug.bind(logger, ...args);
+    const warning      = logger.warning.bind(logger, ...args);
 
     return class extends Component<any, IState> {
-      public readonly state              = DEFAULT_STATE(defaultState);
-      private readonly reference         = createRef<typeof WrappedComponent>();
-      private readonly propSubscriptions = new Map<string, Subscription>();
-      private readonly stateSubject      = new BehaviorSubject<StateWithPrevious>({
-        ...this.state, prevProps: {},
+      public readonly state          = DEFAULT_STATE(defaultState);
+      private readonly reference     = createRef<typeof WrappedComponent>();
+      private readonly stateSubject  = new BehaviorSubject<StateWithPrevious>({
+        ...this.state, prevRecords: [],
       });
-      private readonly subscriptions     = new Subscription();
+      private readonly subscriptions = new Subscription();
 
       constructor (props : any) {
         super(props);
@@ -91,7 +125,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         info('component did mount');
 
         debug('initializing with default values');
-        debug('default state: ', { ...this.state.basicProps, ...this.state.obsValues });
+        debug('default state: ', this.stateSubject.value.state);
 
         this.listenToStateUpdates();
         this.subscribeToStaticProps(staticProps || {});
@@ -111,180 +145,151 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         this.detectChanges(this.props);
       }
 
-      private detectChanges (props : any) {
+      private detectChanges (props : Record<string, any>) {
         debug('detecting changes for props');
         debug('props: ', props);
 
-        const { prevProps } = this.stateSubject.value;
-        this.update({ prevProps: props });
+        const { prevRecords } = this.stateSubject.value;
+        const currRecords     = this.getPropRecords(props);
 
-        const leftoverProps = this.updateObservableProps(prevProps, props);
-        this.updateOtherProps(prevProps, props, leftoverProps);
+        const diff = this.calculateDifferences(prevRecords, currRecords);
+
+        this.handleChanges(diff);
+
+        this.update({ prevRecords: currRecords });
       }
 
-      private updateOtherProps (prevProps : any, props : any, leftovers : string[]) {
-        const { added, different, changes, removed } = this.calculateDifferences(prevProps, props, false, leftovers);
+      private getPropRecords (props : Record<string, any>) : PropRecord[] {
+        return Object.keys(props).map(key => {
+          let obs$ : any = props[key] instanceof Observable ? props[key] : undefined;
 
-        if (changes) {
+          if (!obs$ && this.isSubscriberType(props[key])) {
+            const current : any = this.reference.current;
 
-          info('detected Basic Prop changes');
-          debug('changes: ', { added, different, removed });
+            if (current) {
+              obs$ = current[key] instanceof Observable ? current[key] : undefined;
 
-          const newProps : any = {};
-          added.concat(different).forEach(key =>
-            newProps[key] = props[key],
-          );
+              if (!obs$) {
+                warning('received a Subscriber type but nothing to subscribe to: [' + key + ']');
+              }
+            }
+          }
 
-          this.update({ basicProps: newProps });
-        }
+          const record : PropRecord = {
+            key,
+            value: props[key],
+            obs$,
+          };
+
+          return record;
+        });
       }
 
       public render () {
-        const { obsValues, basicProps } = this.state;
-        const values                    = { ...basicProps, ...obsValues };
-        const W                         = WrappedComponent as any;
-        const isFnCmp                   = isFunctionComponent(WrappedComponent);
+        const { state } = this.state;
+        const W         = WrappedComponent as any;
+        const isFnCmp   = isFunctionComponent(WrappedComponent);
 
         debug(`rendering component [${ isFnCmp ? 'FunctionComponent' : 'ComponentClass' }]`);
 
         if (isFnCmp) {
           return (
-            <W { ...values } />
+            <W { ...state } />
           );
         }
         else {
           return (
-            <W { ...values } ref={ this.reference }/>
+            <W { ...state } ref={ this.reference }/>
           );
         }
       }
 
-      /**
-       *
-       * @param prevProps
-       * @param props
-       */
-      private updateObservableProps (prevProps : any, props : any) {
-        const { added, different, removed, changes } = this.calculateDifferences(prevProps, props);
-
-        if (changes) {
-          info('detected Observables changes');
-          debug('changes: ', { added, different, removed });
+      private handleChanges ({ different, added, removed, changes } : PropChanges) {
+        if (!changes) {
+          return;
         }
-        different.concat(removed).forEach(prop => this.removePropSubscription(prop));
-        // the leftover props are ones that didnt end up getting added
-        const leftovers : string[] = added.concat(different)
-          .map(prop => this.addPropSubscription(prop, props))
-          .filter(Boolean) as string[];
 
-        /*
-         Remove the keys afterwards, in the scenario the observable simply just changes,
-         we can keep the old value there until a new one is received.
-         But if the key has been removed completely, then we should remove it completely also.
-         */
-        this.removeObservableKeys(removed);
+        info('detected Observables changes');
+        debug('changes: ', { added, different, removed, changes });
 
-        return leftovers;
+        const newState = { ...this.stateSubject.value.state };
+
+        const addToState = (record : PropRecord) => {
+          const { key, value, obs$ } = record;
+          if (obs$) {
+            const subscriber = obs$ === value ? this.handleUpdateFn(record) : value;
+            debug(`subscribing to props [${ key }]`);
+            record.subscription = obs$.subscribe(subscriber);
+            this.subscriptions.add(record.subscription);
+          }
+          else {
+            newState[key] = value;
+          }
+        };
+
+        const unsubscribe = ({ key, subscription } : PropRecord) => {
+          if (subscription) {
+            info(`unsubscribing to prop [${ key }]`);
+            subscription.unsubscribe();
+          }
+        };
+
+        removed.forEach(record => {
+          unsubscribe(record);
+          delete newState[record.key];
+        });
+
+        different.forEach(({ oldRecord, newRecord }) => {
+          unsubscribe(oldRecord);
+          addToState(newRecord);
+        });
+
+        added.forEach(addToState);
       }
 
-      private calculateDifferences (prevProps : any, currProps : any, withRxjsItems = true, leftovers : string[] = []) {
-        const prevKeys = Object.keys(prevProps).filter(this.filterKeys(prevProps, withRxjsItems));
-        const currKeys = Object.keys(currProps).filter(this.filterKeys(currProps, withRxjsItems)).concat(leftovers);
+      private handleUpdateFn ({ key } : PropRecord) {
+        return (value : any) => {
+          debug('received updated value');
+          debug({ [key]: value });
+          this.updateState({
+            [key]: value,
+          });
+        };
+      }
 
-        debug('prevProps', prevKeys);
-        debug('currKeys', currKeys);
+      private calculateDifferences (prevRecords : PropRecord[], currRecords : PropRecord[]) : PropChanges {
+        const removed : PropRecord[]             = [];
+        const added : PropRecord[]               = [...currRecords];
+        const different : PropRecordDifference[] = [];
 
-        const removed : string[]   = [];
-        const added : string[]     = [...currKeys];
-        const different : string[] = [];
-
-        prevKeys.forEach(key => {
-          const index = added.indexOf(key);
+        prevRecords.forEach(prevRecord => {
+          const index = added.findIndex(record => record.key === prevRecord.key);
           if (index >= 0) {
-            added.splice(index, 1);
+            const currRecord = added.splice(index, 1)[0];
 
-            if (currProps[key] !== prevProps[key]) {
-              different.push(key);
+            // this comparison checks if the observable value or default value has changed
+            if (currRecord.value !== prevRecord.value || currRecord.obs$ !== prevRecord.value) {
+              different.push({
+                oldRecord: prevRecord,
+                newRecord: currRecord,
+              });
             }
           }
-          else if (typeof currProps[key] === 'undefined') {
-            removed.push(key);
+          else {
+            removed.push(prevRecord);
           }
         });
 
         return {
           removed, added, different,
-          changes: added.length + removed.length + different.length > 0,
+          changes: added.length + removed.length + different.length,
         };
       }
 
-      private addPropSubscription (prop : string, props : any) {
-        const propValue                        = (props as any)[prop];
-        const current : any                    = this.reference.current;
-        let subscription : Subscription | null = null;
-
-        if (propValue instanceof Observable) {
-          info(`subscribing to observable [${ prop }]`);
-          subscription = propValue.subscribe(result => this.updateObservableValue({ [prop]: result }));
-        }
-        else if (current && current.hasOwnProperty(prop)) {
-          debug('found [' + prop + '] on reference component');
-          if (this.isSubscriberType(propValue)) {
-            const referenceValue = current[prop];
-
-            // noinspection SuspiciousTypeOfGuard - Reason editor validation
-            if (referenceValue instanceof Observable) {
-              info(`sending subscriber for [${ prop }]`);
-              subscription = referenceValue.subscribe(propValue);
-            }
-            else {
-              logger.warning(`Received a subscribable property, but nothing to subscribe to. Prop: [${ prop }]`);
-            }
-          }
-          else {
-            logger.warning(`Received prop [${ prop }] which is also on component reference. ` +
-              `However propValue is not of Subscriber type`);
-            debug('propValue: ', propValue);
-          }
-        }
-
-        if (subscription) {
-          debug(`saving subscription [${ prop }]`);
-          this.propSubscriptions.set(prop, subscription);
-          this.subscriptions.add(subscription);
-          return null;
-        }
-        // return the leftover prop that was supposed to be added but wasn't
-        return prop;
-      }
-
-      private isSubscriberType (value : any) {
+      private isSubscriberType (value : any) : value is Subscriber {
         return typeof value === 'function' ||
-          (typeof value === 'object' && (['next', 'complete', 'error']
+          (typeof value === 'object' && (!!['next', 'complete', 'error']
             .find(key => value.hasOwnProperty(key) && typeof value[key] === 'function')));
-      }
-
-      /**
-       *
-       * @param prop
-       */
-      private removePropSubscription (prop : string) {
-        const subscription = this.propSubscriptions.get(prop);
-        if (!subscription) {
-          logger.warning(`no subscription found for [${ prop }]`);
-          return;
-        }
-        info(`unsubscribing to prop [${ prop }]`);
-        subscription.unsubscribe();
-
-        this.propSubscriptions.delete(prop);
-      }
-
-      private filterKeys (obj : any, isObservable = true) {
-        return (key : string) => {
-          const isRxjsCompat = (obj[key] instanceof Observable || this.isSubscriberType(obj[key]));
-          return isObservable ? isRxjsCompat : !isRxjsCompat;
-        };
       }
 
       private update (state : Partial<StateWithPrevious>) {
@@ -294,21 +299,22 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         });
       }
 
+      private updateState (state : Record<string, any>) {
+        this.update({
+          ...this.stateSubject.value.state,
+          ...state,
+        });
+      }
+
       private listenToStateUpdates () {
-        const subscription = this.stateSubject.pipe(
+        this.subscriptions.add(this.stateSubject.pipe(
           // merge multiple updates into just one. This way we dont spam setState
           debounceTime(0),
           // detect if there are changes with any of the objects
-          distinctUntilChanged((a, b) => {
-            return a.basicProps === b.basicProps && a.obsValues === b.obsValues;
-          }),
+          distinctUntilKeyChanged('state'),
           tap(() => info('updating state')),
-          tap(({ obsValues, basicProps }) => debug('state: ', { ...basicProps, ...obsValues })),
-        ).subscribe(({ basicProps, obsValues }) =>
-          this.setState({ basicProps, obsValues }),
-        );
-
-        this.subscriptions.add(subscription);
+          tap(({ state }) => debug('state: ', state)),
+        ).subscribe(({ state }) => this.setState({ state })));
       }
 
       private subscribeToStaticProps (obj : IStaticProps) {
@@ -316,42 +322,9 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           .forEach(key => {
             debug(`subscribing to StaticProp [${ key }]`);
             this.subscriptions.add(
-              obj[key].subscribe(value => this.updateObservableValue({ [key]: value })),
+              obj[key].subscribe(value => this.update({ [key]: value })),
             );
           });
-      }
-
-      private updateObservableValue (obj : Record<string, any>) {
-        debug('received observable value');
-        debug('value: ', obj);
-
-        this.update({
-          obsValues: {
-            ...this.stateSubject.value.obsValues,
-            ...obj,
-          },
-        });
-      }
-
-      private removeObservableKeys (keys : string[]) {
-        const obsValues = { ...this.stateSubject.value.obsValues };
-        let changes     = false;
-
-        keys.forEach(key => {
-          if (obsValues.hasOwnProperty(key)) {
-            debug(`removing observable value key [${ key }]`);
-            delete obsValues[key];
-            changes = true;
-          }
-          else {
-            logger.warning(`'obsValues' has no key [${ key }] to delete`);
-          }
-        });
-
-        // if there are actually changes then send an update
-        if (changes) {
-          this.update({ obsValues });
-        }
       }
     };
   };
