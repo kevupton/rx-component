@@ -16,6 +16,8 @@ npm i --save reactive-x-component
 
 ## [Demo in Stackblitz](https://stackblitz.com/edit/reactive-x-component)
 
+## [Example Project - Snap Game](https://github.com/kevupton/react-snap)
+
 ## Usage
 ```tsx
 import { ReactiveXComponent } from 'reactive-x-component';
