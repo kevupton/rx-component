@@ -208,7 +208,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           return;
         }
 
-        info('detected Observables changes');
+        info('changes identified');
         debug('changes: ', { added, different, removed, changes });
 
         const newState = { ...this.stateSubject.value.state };
@@ -267,7 +267,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
             const currRecord = added.splice(index, 1)[0];
 
             // this comparison checks if the observable value or default value has changed
-            if (currRecord.value !== prevRecord.value || currRecord.obs$ !== prevRecord.value) {
+            if (currRecord.value !== prevRecord.value || currRecord.obs$ !== prevRecord.obs$) {
               different.push({
                 oldRecord: prevRecord,
                 newRecord: currRecord,
