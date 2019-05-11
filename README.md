@@ -107,6 +107,7 @@ ReactiveXComponent(staticProps, defaultValues)(componentType, options)
 | `defaultValues`| `undefined`  | A `Partial<StaticProps>` which is the initial state value for these observables            |
 | `componentType`| **Required** | A `ComponentType<any>`. Can be either a `FunctionComponent` or `ComponentClass`            |
 | `options`      | `undefined`  | Used for debugging purposes only at this stage. You can specify a name to prefix the debug log |
+
 Returns a component with props as `Observable<T> | T` and also *optional* `Subscriber<T>` for public observable attributes.
 
 ----
