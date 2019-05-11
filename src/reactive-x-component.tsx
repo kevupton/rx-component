@@ -203,16 +203,19 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         }
       }
 
-      private handleChanges ({ different, added, removed, changes } : PropChanges) {
-        if (!changes) {
+      private handleChanges (changes : PropChanges) {
+        if (!changes.changes) {
           return;
         }
 
         info('changes identified');
-        debug('changes: ', { added, different, removed, changes });
+        debug('changes: ', changes);
 
-        const newState = { ...this.stateSubject.value.state };
+        this.updateBasicRecords(changes);
+        this.updateObservableRecords(changes);
+      }
 
+      private updateObservableRecords ({ added, removed, different } : PropChanges) {
         const addToState = (record : PropRecord) => {
           const { key, value, obs$ } = record;
           if (obs$) {
@@ -220,9 +223,6 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
             debug(`subscribing to props [${ key }]`);
             record.subscription = obs$.subscribe(subscriber);
             this.subscriptions.add(record.subscription);
-          }
-          else {
-            newState[key] = value;
           }
         };
 
@@ -233,10 +233,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           }
         };
 
-        removed.forEach(record => {
-          unsubscribe(record);
-          delete newState[record.key];
-        });
+        removed.forEach(unsubscribe);
 
         different.forEach(({ oldRecord, newRecord }) => {
           unsubscribe(oldRecord);
@@ -246,12 +243,42 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         added.forEach(addToState);
       }
 
+      private updateBasicRecords ({ added, removed, different } : PropChanges) {
+        const newState = { ...this.stateSubject.value.state };
+        let changes = removed.length > 0;
+
+        const updateState = ({ key, value, obs$ } : PropRecord) => {
+          if (obs$) {
+            return;
+          }
+
+          changes = true;
+          newState[key] = value;
+        };
+
+        added.concat(
+          different.map(({ newRecord }) => newRecord)
+        ).forEach(updateState);
+
+        removed.forEach(record => {
+          delete newState[record.key];
+        });
+
+        if (changes) {
+          debug('basic records have changed');
+          this.update({ state: newState });
+        }
+      }
+
       private handleUpdateFn (key : string) {
         return (value : any) => {
           debug('received updated value');
           debug({ [key]: value });
-          this.updateState({
-            [key]: value,
+          this.update({
+            state: {
+              ...this.stateSubject.value.state,
+              [key]: value,
+            },
           });
         };
       }
@@ -291,19 +318,12 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
             .find(key => value.hasOwnProperty(key) && typeof value[key] === 'function')));
       }
 
-      private update (state : Partial<StateWithPrevious>) {
+      private update (data : Partial<StateWithPrevious>) {
+        debug('sending subject updates');
+        debug('data: ', data);
         this.stateSubject.next({
           ...this.stateSubject.value,
-          ...state,
-        });
-      }
-
-      private updateState (state : Record<string, any>) {
-        this.update({
-          state: {
-            ...this.stateSubject.value.state,
-            ...state,
-          },
+          ...data,
         });
       }
 
