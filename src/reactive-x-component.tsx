@@ -15,7 +15,6 @@ type FilterObservables<X> = {
 
 type AllExcept<X, Y> = keyof Y extends never ? X : Pick<X, ExceptValues<X, Y>[keyof X]>;
 type AllObservables<X> = Pick<X, FilterObservables<X>[keyof X]>;
-type Subscribable<T> = ((value : T) => void) | PartialObserver<T>;
 type ObsFunctions<X> = {
   [Key in keyof X] : X[Key] extends Observable<infer R> ? Subscribable<R> : X[Key];
 }
@@ -40,7 +39,7 @@ interface IState {
   state : Record<string, any>;
 }
 
-type Subscriber<T = any> = PartialObserver<T> | ((value : T) => void);
+type Subscribable<T = any> = PartialObserver<T> | ((value : T) => void);
 
 interface DefaultRecord {
   key : string;
@@ -53,7 +52,7 @@ interface ObservableRecord extends DefaultRecord {
 }
 
 interface SubscriberRecord extends DefaultRecord {
-  value : Subscriber;
+  value : Subscribable;
   obs$ : Observable<any>;
 }
 
@@ -286,7 +285,7 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         };
       }
 
-      private isSubscriberType (value : any) : value is Subscriber {
+      private isSubscriberType (value : any) : value is Subscribable {
         return typeof value === 'function' ||
           (typeof value === 'object' && (!!['next', 'complete', 'error']
             .find(key => value.hasOwnProperty(key) && typeof value[key] === 'function')));
