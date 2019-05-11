@@ -300,8 +300,10 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       private updateState (state : Record<string, any>) {
         this.update({
-          ...this.stateSubject.value.state,
-          ...state,
+          state: {
+            ...this.stateSubject.value.state,
+            ...state,
+          },
         });
       }
 
