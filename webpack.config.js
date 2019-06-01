@@ -38,7 +38,7 @@ module.exports = {
         exclude: /node_modules/,
 
 				options: {
-					plugins: ['syntax-dynamic-import'],
+					plugins:  ['syntax-dynamic-import'],
 
 					presets: [
 						[

@@ -160,13 +160,13 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       private getPropRecords (props : Record<string, any>) : PropRecord[] {
         return Object.keys(props).map(key => {
-          let obs$ : any = props[key] instanceof Observable ? props[key] : undefined;
+          let obs$ : any = this.isObservable(props[key]) ? props[key] : undefined;
 
           if (!obs$ && this.isSubscriberType(props[key])) {
             const current : any = this.reference.current;
 
             if (current) {
-              obs$ = current[key] instanceof Observable ? current[key] : undefined;
+              obs$ = this.isObservable(current[key]) ? current[key] : undefined;
 
               if (!obs$) {
                 warning('received a Subscriber type but nothing to subscribe to: [' + key + ']');
@@ -246,19 +246,19 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       private updateBasicRecords ({ added, removed, different } : PropChanges) {
         const newState = { ...this.stateSubject.value.state };
-        let changes = removed.length > 0;
+        let changes    = removed.length > 0;
 
         const updateState = ({ key, value, obs$ } : PropRecord) => {
           if (obs$) {
             return;
           }
 
-          changes = true;
+          changes       = true;
           newState[key] = value;
         };
 
         added.concat(
-          different.map(({ newRecord }) => newRecord)
+          different.map(({ newRecord }) => newRecord),
         ).forEach(updateState);
 
         removed.forEach(record => {
@@ -311,6 +311,14 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
           removed, added, different,
           changes: added.length + removed.length + different.length,
         };
+      }
+
+      private isObservable (value : any) : value is Observable<any> {
+        return value instanceof Observable ||
+          (typeof value === 'object' && value.hasOwnProperty('_isScalar') &&
+            value.hasOwnProperty('_subscribe') && typeof value._subscribe === 'function' &&
+            value.hasOwnProperty('pipe') && typeof value.pipe === 'function' &&
+            value.hasOwnProperty('subscribe') && typeof value.subscribe === 'function');
       }
 
       private isSubscriberType (value : any) : value is Subscribable {
