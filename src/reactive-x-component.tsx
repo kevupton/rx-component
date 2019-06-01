@@ -315,10 +315,11 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
       private isObservable (value : any) : value is Observable<any> {
         return value instanceof Observable ||
-          (typeof value === 'object' && value.hasOwnProperty('_isScalar') &&
-            value.hasOwnProperty('_subscribe') && typeof value._subscribe === 'function' &&
-            value.hasOwnProperty('pipe') && typeof value.pipe === 'function' &&
-            value.hasOwnProperty('subscribe') && typeof value.subscribe === 'function');
+          (typeof value === 'object' &&
+            typeof value._isScalar === 'boolean' &&
+            typeof value._subscribe === 'function' &&
+            typeof value.pipe === 'function' &&
+            typeof value.subscribe === 'function');
       }
 
       private isSubscriberType (value : any) : value is Subscribable {
