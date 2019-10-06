@@ -106,10 +106,10 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
     const warning      = logger.warning.bind(logger, ...args);
 
     return class extends Component<any, IState> {
-      public readonly state          = DEFAULT_STATE(defaultState);
+      public readonly state : Readonly<IState>;
       private readonly reference     = createRef<typeof WrappedComponent>();
       private readonly stateSubject  = new BehaviorSubject<StateWithPrevious>({
-        ...this.state, prevRecords: [],
+        ...DEFAULT_STATE(defaultState), prevRecords: [],
       });
       private readonly subscriptions = new Subscription();
 
@@ -118,19 +118,23 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
 
         debug('Constructing ReactiveXComponent');
         debug('construction props: ', props);
+        debug('staticProps: ', staticProps);
+
+        this.subscribeToStaticProps(staticProps || {});
+
+        // resubscribe to all of the props
+        this.detectChanges(this.props);
+
+        this.state =  { state: this.stateSubject.value.state };
       }
 
-      public componentWillMount () {
+      public componentDidMount () {
         info('component will mount');
 
         debug('initializing with default values');
         debug('default state: ', this.stateSubject.value.state);
 
         this.listenToStateUpdates();
-        this.subscribeToStaticProps(staticProps || {});
-
-        // resubscribe to all of the props
-        this.detectChanges(this.props);
       }
 
       public componentWillUnmount () {
