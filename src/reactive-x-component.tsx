@@ -120,8 +120,8 @@ export function ReactiveXComponent<StaticProps extends IStaticProps = {}>
         debug('construction props: ', props);
       }
 
-      public componentDidMount () {
-        info('component did mount');
+      public componentWillMount () {
+        info('component will mount');
 
         debug('initializing with default values');
         debug('default state: ', this.stateSubject.value.state);
